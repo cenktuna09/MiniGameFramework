@@ -6,6 +6,43 @@ using MiniGameFramework.Core.Architecture;
 namespace MiniGameFramework.Core.Events
 {
     /// <summary>
+    /// Empty disposable for cases where no actual subscription was made.
+    /// </summary>
+    internal class EmptyDisposable : IDisposable
+    {
+        public static readonly EmptyDisposable Instance = new EmptyDisposable();
+        private EmptyDisposable() { }
+        public void Dispose() { }
+    }
+
+    /// <summary>
+    /// Subscription wrapper that allows automatic unsubscription via IDisposable.
+    /// </summary>
+    internal class EventSubscription : IDisposable
+    {
+        private readonly EventBus _eventBus;
+        private readonly Type _eventType;
+        private readonly Delegate _callback;
+        private bool _disposed = false;
+
+        public EventSubscription(EventBus eventBus, Type eventType, Delegate callback)
+        {
+            _eventBus = eventBus;
+            _eventType = eventType;
+            _callback = callback;
+        }
+
+        public void Dispose()
+        {
+            if (!_disposed)
+            {
+                _eventBus.RemoveSubscription(_eventType, _callback);
+                _disposed = true;
+            }
+        }
+    }
+
+    /// <summary>
     /// Implementation of the event bus system with zero-allocation event handling.
     /// Provides type-safe event publishing and subscription.
     /// </summary>
@@ -22,12 +59,13 @@ namespace MiniGameFramework.Core.Events
         /// </summary>
         /// <typeparam name="T">The type of event to subscribe to.</typeparam>
         /// <param name="callback">The callback to invoke when the event is published.</param>
-        public void Subscribe<T>(Action<T> callback) where T : class
+        /// <returns>IDisposable that can be used to unsubscribe.</returns>
+        public IDisposable Subscribe<T>(Action<T> callback) where T : class
         {
             if (callback == null)
             {
                 Debug.LogWarning("[EventBus] Attempted to subscribe with null callback.");
-                return;
+                return EmptyDisposable.Instance;
             }
             
             var type = typeof(T);
@@ -40,7 +78,7 @@ namespace MiniGameFramework.Core.Events
                     pendingSubscriptions[type] = new List<Delegate>();
                 }
                 pendingSubscriptions[type].Add(callback);
-                return;
+                return new EventSubscription(this, type, callback);
             }
             
             if (!subscriptions.ContainsKey(type))
@@ -53,6 +91,8 @@ namespace MiniGameFramework.Core.Events
                 subscriptions[type].Add(callback);
                 Debug.Log($"[EventBus] Subscribed to {type.Name}");
             }
+            
+            return new EventSubscription(this, type, callback);
         }
         
         /// <summary>
@@ -233,6 +273,41 @@ namespace MiniGameFramework.Core.Events
             }
             
             pendingUnsubscriptions.Clear();
+        }
+
+        /// <summary>
+        /// Internal method to remove a subscription (used by EventSubscription wrapper).
+        /// </summary>
+        /// <param name="eventType">The type of event to unsubscribe from.</param>
+        /// <param name="callback">The callback to remove.</param>
+        internal void RemoveSubscription(Type eventType, Delegate callback)
+        {
+            if (callback == null) return;
+
+            if (isPublishing)
+            {
+                // Queue unsubscription for after publishing is complete
+                if (!pendingUnsubscriptions.ContainsKey(eventType))
+                {
+                    pendingUnsubscriptions[eventType] = new List<Delegate>();
+                }
+                pendingUnsubscriptions[eventType].Add(callback);
+                return;
+            }
+
+            if (subscriptions.TryGetValue(eventType, out var callbacks))
+            {
+                if (callbacks.Remove(callback))
+                {
+                    Debug.Log($"[EventBus] Unsubscribed from {eventType.Name}");
+                    
+                    // Clean up empty subscription lists
+                    if (callbacks.Count == 0)
+                    {
+                        subscriptions.Remove(eventType);
+                    }
+                }
+            }
         }
         
         #endregion

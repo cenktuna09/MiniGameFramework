@@ -1,6 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
-using MiniGameFramework.Core.Events;
+using MiniGameFramework.Core.Architecture;
 
 namespace MiniGameFramework.UI.Panels
 {
@@ -30,7 +30,7 @@ namespace MiniGameFramework.UI.Panels
             base.OnPanelInitialized();
             
             // Get EventBus from ServiceLocator
-            _eventBus = Core.DI.ServiceLocator.Instance.Get<IEventBus>();
+            _eventBus = Core.DI.ServiceLocator.Instance.Resolve<IEventBus>();
             
             SetupButtonListeners();
             ConfigurePlatformSpecificUI();

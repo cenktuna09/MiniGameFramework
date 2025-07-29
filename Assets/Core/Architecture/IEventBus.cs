@@ -13,7 +13,8 @@ namespace MiniGameFramework.Core.Architecture
         /// </summary>
         /// <typeparam name="T">The type of event to subscribe to.</typeparam>
         /// <param name="callback">The callback to invoke when the event is published.</param>
-        void Subscribe<T>(Action<T> callback) where T : class;
+        /// <returns>IDisposable that can be used to unsubscribe.</returns>
+        IDisposable Subscribe<T>(Action<T> callback) where T : class;
         
         /// <summary>
         /// Unsubscribe from an event type.

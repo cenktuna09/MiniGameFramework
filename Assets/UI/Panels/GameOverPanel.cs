@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using MiniGameFramework.Core.Events;
+using MiniGameFramework.Core.Architecture;
 
 namespace MiniGameFramework.UI.Panels
 {
@@ -84,8 +84,8 @@ namespace MiniGameFramework.UI.Panels
             base.OnPanelInitialized();
             
             // Get dependencies from ServiceLocator
-            _eventBus = Core.DI.ServiceLocator.Instance.Get<IEventBus>();
-            _saveSystem = Core.DI.ServiceLocator.Instance.Get<Core.SaveSystem.ISaveSystem>();
+            _eventBus = Core.DI.ServiceLocator.Instance.Resolve<IEventBus>();
+            _saveSystem = Core.DI.ServiceLocator.Instance.Resolve<Core.SaveSystem.ISaveSystem>();
             
             SetupButtonListeners();
             ConfigureUI();
@@ -293,19 +293,19 @@ namespace MiniGameFramework.UI.Panels
 
         #region High Score Management
 
-        private void CheckAndUpdateHighScore(GameOverData data)
+        private async void CheckAndUpdateHighScore(GameOverData data)
         {
             if (string.IsNullOrEmpty(data.GameType) || _saveSystem == null)
                 return;
 
             string highScoreKey = $"HighScore_{data.GameType}";
-            int currentHighScore = _saveSystem.GetInt(highScoreKey, 0);
+            int currentHighScore = await _saveSystem.LoadAsync<int>(highScoreKey, 0);
             
             _isNewHighScore = data.Score > currentHighScore;
             
             if (_isNewHighScore)
             {
-                _saveSystem.SetInt(highScoreKey, data.Score);
+                await _saveSystem.SaveAsync<int>(highScoreKey, data.Score);
                 currentHighScore = data.Score;
                 
                 if (_newHighScoreContainer != null)
