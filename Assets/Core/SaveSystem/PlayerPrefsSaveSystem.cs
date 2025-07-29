@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
-using System.Linq;
+
 namespace MiniGameFramework.Core.SaveSystem
 {
     /// <summary>
@@ -43,6 +43,7 @@ namespace MiniGameFramework.Core.SaveSystem
                 OnDataSaved?.Invoke(key);
                 
                 Debug.Log($"[SaveSystem] Saved data for key: {key}");
+                await Task.CompletedTask;
                 return true;
             }
             catch (Exception e)
@@ -64,6 +65,7 @@ namespace MiniGameFramework.Core.SaveSystem
                 if (!PlayerPrefs.HasKey(fullKey))
                 {
                     Debug.Log($"[SaveSystem] No data found for key: {key}");
+                    await Task.CompletedTask;
                     return defaultValue;
                 }
                 
@@ -73,6 +75,7 @@ namespace MiniGameFramework.Core.SaveSystem
                 OnDataLoaded?.Invoke(key);
                 
                 Debug.Log($"[SaveSystem] Loaded data for key: {key}");
+                await Task.CompletedTask;
                 return data;
             }
             catch (Exception e)
@@ -111,6 +114,7 @@ namespace MiniGameFramework.Core.SaveSystem
                     OnDataDeleted?.Invoke(key);
                     
                     Debug.Log($"[SaveSystem] Deleted data for key: {key}");
+                    await Task.CompletedTask;
                     return true;
                 }
                 
@@ -144,6 +148,7 @@ namespace MiniGameFramework.Core.SaveSystem
                 SaveKnownKeys();
                 
                 Debug.Log("[SaveSystem] Cleared all saved data");
+                await Task.CompletedTask;
                 return true;
             }
             catch (Exception e)
@@ -158,7 +163,9 @@ namespace MiniGameFramework.Core.SaveSystem
         /// </summary>
         public string[] GetAllKeys()
         {
-            return knownKeys.ToArray();
+            var keysArray = new string[knownKeys.Count];
+            knownKeys.CopyTo(keysArray);
+            return keysArray;
         }
         
         #region High Score Methods
@@ -250,7 +257,9 @@ namespace MiniGameFramework.Core.SaveSystem
         /// </summary>
         private void SaveKnownKeys()
         {
-            var keysJson = JsonUtility.ToJson(new { keys = knownKeys.ToArray() });
+            var keysArray = new string[knownKeys.Count];
+            knownKeys.CopyTo(keysArray);
+            var keysJson = JsonUtility.ToJson(new { keys = keysArray });
             PlayerPrefs.SetString($"{KEY_PREFIX}KnownKeys", keysJson);
             PlayerPrefs.Save();
         }
