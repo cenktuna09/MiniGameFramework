@@ -2,6 +2,7 @@ using UnityEngine;
 using MiniGameFramework.Core.Architecture;
 using MiniGameFramework.Core.Events;
 using MiniGameFramework.Core.SaveSystem;
+using MiniGameFramework.Core.StateManagement;
 using MiniGameFramework.Core.DI;
 
 namespace MiniGameFramework.Core.Bootstrap
@@ -23,6 +24,7 @@ namespace MiniGameFramework.Core.Bootstrap
         // Service instances
         private IEventBus _eventBus;
         private ISaveSystem _saveSystem;
+        private IGameStateManager _gameStateManager;
         private bool _isInitialized = false;
 
         #region Unity Lifecycle
@@ -71,6 +73,9 @@ namespace MiniGameFramework.Core.Bootstrap
                 // Initialize SaveSystem
                 InitializeSaveSystem();
 
+                // Initialize GameStateManager (depends on EventBus)
+                InitializeGameStateManager();
+
                 // Register services with ServiceLocator
                 RegisterServices();
 
@@ -98,6 +103,12 @@ namespace MiniGameFramework.Core.Bootstrap
             LogIfEnabled("SaveSystem initialized");
         }
 
+        private void InitializeGameStateManager()
+        {
+            _gameStateManager = new GameStateManager(_eventBus);
+            LogIfEnabled("GameStateManager initialized");
+        }
+
         private void RegisterServices()
         {
             var serviceLocator = ServiceLocator.Instance;
@@ -109,6 +120,10 @@ namespace MiniGameFramework.Core.Bootstrap
             // Register SaveSystem
             serviceLocator.Register<ISaveSystem>(_saveSystem);
             LogIfEnabled("SaveSystem registered with ServiceLocator");
+
+            // Register GameStateManager
+            serviceLocator.Register<IGameStateManager>(_gameStateManager);
+            LogIfEnabled("GameStateManager registered with ServiceLocator");
 
             LogIfEnabled("All services registered successfully");
         }
@@ -139,6 +154,11 @@ namespace MiniGameFramework.Core.Bootstrap
         /// Get the SaveSystem instance
         /// </summary>
         public ISaveSystem SaveSystem => _saveSystem;
+
+        /// <summary>
+        /// Get the GameStateManager instance
+        /// </summary>
+        public IGameStateManager GameStateManager => _gameStateManager;
 
         #endregion
 

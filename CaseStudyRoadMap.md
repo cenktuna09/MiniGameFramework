@@ -88,6 +88,7 @@
 Assets/
 ├── Core/                          # Framework core systems
 │   ├── Architecture/              # Base classes, interfaces
+│   ├── Bootstrap/                 # GameBootstrap class for service initialization
 │   ├── DI/                        # ServiceLocator (+ Custom DI if time)
 │   ├── Events/                    # Event system
 │   ├── SceneManagement/           # Scene loading/unloading
@@ -119,6 +120,16 @@ Assets/
 - **State Machine**: For game flow management
 - **Object Pooling**: For performance optimization (Runner obstacles)
 - **Simple Animations**: Unity AnimationCurve + Lerp for polish
+
+### Comprehensive Testing Strategy
+- **System-Level Testers**: Every major system has dedicated Tester class (UIFrameworkTester, GameStateManagerTester, etc.)
+- **Auto-Generated Test Scenes**: Unity MenuItem creates complete test environments with UI
+- **Real-Time Testing**: Live displays showing system state, transitions, and test results
+- **Automated Test Sequences**: Full test suites run automatically on scene start
+- **Manual Control Integration**: Developer can trigger specific tests and scenarios
+- **Event System Validation**: All testers verify event publishing/subscription
+- **Performance Verification**: 60 FPS stability testing during all operations
+- **Bootstrap Integration**: Every tester validates service initialization and dependency resolution
 
 ---
 
@@ -163,7 +174,7 @@ Assets/
 - [ ] Add loading screen with progress bar
 - [ ] Test scene loading flow thoroughly
 
-#### 2.2 Core UI Framework (4h) ✅ COMPLETED
+#### 2.2 Core UI Framework (4h)
 - [x] Create `UIPanel` base class with lifecycle events
 - [x] Implement basic panel stack management
 - [x] Add simple transition animations (fade, scale)
@@ -178,22 +189,28 @@ Assets/
 **Day 1 Evening**
 
 #### 3.1 Game State Management (2h)
-- [ ] Create simple game state machine
-- [ ] Implement states: Menu, Loading, Playing, Paused, GameOver
-- [ ] Add state transitions with validation
-- [ ] Integrate with event system for state changes
+- [x] Create simple game state machine
+- [x] Implement states: Menu, Loading, Playing, Paused, GameOver
+- [x] Add state transitions with validation
+- [x] Integrate with event system for state changes
+- [x] **TEST SYSTEM**: GameStateManagerTester with automated validation tests
+- [x] **TEST COVERAGE**: Bootstrap integration, valid/invalid transitions, event system, state history
 
 #### 3.2 Game Manager & Flow Control (2h)
 - [ ] Create central `GameManager` singleton
 - [ ] Implement mini-game lifecycle management
 - [ ] Add game session tracking and scoring
 - [ ] Create reusable progress and timer systems
+- [ ] **TEST SYSTEM**: GameManagerTester with lifecycle and session tests
+- [ ] **TEST COVERAGE**: Mini-game loading/unloading, session tracking, score management, timer accuracy
 
 #### 3.3 Input System Setup (2h)
 - [ ] Configure Unity Input System for PC
 - [ ] Create basic input action maps
 - [ ] Implement input event distribution via events
 - [ ] Test keyboard and mouse input handling
+- [ ] **TEST SYSTEM**: InputSystemTester with input simulation and event verification
+- [ ] **TEST COVERAGE**: Action map functionality, event distribution, input responsiveness, multi-input support
 
 ### Phase 4: Match-3 MVP Implementation (8 hours)
 **Day 2 Morning**
@@ -222,6 +239,8 @@ Assets/
 - [ ] Add pause/resume functionality
 - [ ] Implement restart and back to menu options
 - [ ] Test complete Match-3 game flow
+- [ ] **TEST SYSTEM**: Match3GameTester with board validation and gameplay simulation
+- [ ] **TEST COVERAGE**: Board generation, match detection, swap mechanics, scoring, game states, UI integration
 
 ### Phase 5: Endless Runner MVP Implementation (8 hours)
 **Day 2 Afternoon**
@@ -250,6 +269,8 @@ Assets/
 - [ ] Add game over screen with restart
 - [ ] Implement back to menu functionality
 - [ ] Test complete Runner game flow
+- [ ] **TEST SYSTEM**: EndlessRunnerTester with physics simulation and obstacle testing
+- [ ] **TEST COVERAGE**: Player movement, collision detection, object pooling, score progression, difficulty scaling
 
 ### Phase 6: Integration & Polish (12 hours)
 **Day 2 Evening + Day 3 Morning**
@@ -283,6 +304,8 @@ Assets/
 - [ ] Validate all save/load functionality
 - [ ] Performance testing on target platform
 - [ ] Final bug fixes and stability checks
+- [ ] **TEST SYSTEM**: IntegrationTester with full user journey automation
+- [ ] **TEST COVERAGE**: End-to-end workflows, save system persistence, cross-scene data integrity, performance benchmarks
 
 ### Phase 7: Bonus Features & Documentation (8 hours)
 **Day 3 Afternoon/Evening**
@@ -398,6 +421,15 @@ Assets/
 - [ ] **Memory Efficient**: No memory leaks, good object lifecycle
 - [ ] **Well Tested**: Core systems have unit tests
 - [ ] **Documented**: Clear README with architecture explanation
+
+### Testing Excellence ✅
+- [ ] **Comprehensive Test Coverage**: Every major system has dedicated Tester class
+- [ ] **Automated Test Scenes**: One-click test environment creation via Unity Menu
+- [ ] **Real-Time Validation**: Live UI displays showing system status and test results
+- [ ] **Zero Manual Testing**: All core functionality validated through automated sequences
+- [ ] **Performance Testing**: 60 FPS stability verification during all test operations
+- [ ] **Event System Testing**: All event publish/subscribe flows validated
+- [ ] **Integration Testing**: End-to-end user journeys automated and verified
 
 ### Bonus Features ✅ (Nice to Have)
 - [ ] **Custom DI Container**: Beyond simple ServiceLocator

@@ -71,3 +71,15 @@ performance:
   - All Update loops must be reviewed for GC allocations.
   - Prefer event-driven or coroutine-based alternatives where possible.
   - Use object pooling for frequently spawned/destroyed objects.
+
+testing:
+  - Every major system must have a comprehensive Tester class (like UIFrameworkTester, GameStateManagerTester).
+  - Tester classes should include: bootstrap integration tests, functional tests, edge case tests, manual controls.
+  - Auto-create test scenes with Unity MenuItem: "MiniGameFramework/Setup/Create [System] Test Scene".
+  - Test systems must provide: real-time UI displays, pass/fail tracking, automated test sequences, manual control buttons.
+  - All tests should run automatically on scene start with configurable intervals.
+  - Event system integration must be tested in every tester (subscribe/publish verification).
+  - Use reflection and GameObject.Find for automatic UI component assignment in test setup.
+  - Test results should show detailed pass/fail counts and comprehensive logging.
+  - Performance testing: ensure 60 FPS stability during all test sequences.
+  - Test cleanup: properly dispose event subscriptions and reset systems.
