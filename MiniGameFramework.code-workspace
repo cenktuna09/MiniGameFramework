@@ -1,0 +1,22 @@
+{
+	"folders": [
+	  {
+		"path": "."
+	  }
+	],
+	"settings": {
+	  "dotnet.defaultSolution": "MiniGameFramework.sln",
+	  "files.exclude": {
+		"**/*.csproj": true,
+		"**/*.sln": false,
+		"**/[Ll]ibrary": true,
+		"**/[Tt]emp": true,
+		"**/[Oo]bj": true,
+		"**/[Bb]uild": true,
+		"**/[Bb]uilds": true,
+		"**/[Ll]ogs": true,
+		"**/UserSettings": true
+	  }
+	}
+  }
+  
