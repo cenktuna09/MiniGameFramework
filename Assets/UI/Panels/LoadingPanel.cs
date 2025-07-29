@@ -29,6 +29,7 @@ namespace MiniGameFramework.UI.Panels
         [SerializeField] private float _progressAnimationSpeed = 2f;
         [SerializeField] private bool _showSpinner = true;
         [SerializeField] private float _spinnerRotationSpeed = 360f;
+        [SerializeField] private AnimationCurve _progressEaseCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
 
         [Header("Loading Messages")]
         [SerializeField] private string[] _loadingMessages = {
@@ -48,8 +49,8 @@ namespace MiniGameFramework.UI.Panels
         private Coroutine _spinnerCoroutine;
         private int _currentMessageIndex = 0;
 
-        // Progress animation tweens
-        private int _progressTweenId = -1;
+        // Progress animation coroutines
+        private Coroutine _progressTweenCoroutine;
 
         #region Events
 
@@ -318,26 +319,38 @@ namespace MiniGameFramework.UI.Panels
             _targetProgress = targetProgress;
             
             // Cancel existing progress animation
-            if (_progressTweenId != -1)
+            if (_progressTweenCoroutine != null)
             {
-                LeanTween.cancel(_progressTweenId);
-                _progressTweenId = -1;
+                StopCoroutine(_progressTweenCoroutine);
+                _progressTweenCoroutine = null;
             }
             
-            // Animate progress with LeanTween
+            // Animate progress with coroutine
             float duration = Mathf.Abs(targetProgress - _currentProgress) / _progressAnimationSpeed;
             duration = Mathf.Max(duration, 0.1f); // Minimum duration
             
-            _progressTweenId = LeanTween.value(gameObject, _currentProgress, targetProgress, duration)
-                .setEase(LeanTweenType.easeOutCubic)
-                .setOnUpdate((float value) => {
-                    UpdateProgress(value);
-                })
-                .setOnComplete(() => {
-                    _progressTweenId = -1;
-                    onComplete?.Invoke();
-                })
-                .id;
+            _progressTweenCoroutine = StartCoroutine(AnimateProgressValue(_currentProgress, targetProgress, duration, onComplete));
+        }
+
+        private IEnumerator AnimateProgressValue(float fromValue, float toValue, float duration, Action onComplete)
+        {
+            float elapsedTime = 0f;
+            
+            while (elapsedTime < duration)
+            {
+                elapsedTime += Time.unscaledDeltaTime;
+                float normalizedTime = elapsedTime / duration;
+                float easedTime = _progressEaseCurve.Evaluate(normalizedTime);
+                
+                float currentValue = Mathf.Lerp(fromValue, toValue, easedTime);
+                UpdateProgress(currentValue);
+                
+                yield return null;
+            }
+            
+            UpdateProgress(toValue);
+            _progressTweenCoroutine = null;
+            onComplete?.Invoke();
         }
 
         #endregion
@@ -393,11 +406,11 @@ namespace MiniGameFramework.UI.Panels
 
         private void StopAllAnimations()
         {
-            // Stop LeanTween animations
-            if (_progressTweenId != -1)
+            // Stop progress animation
+            if (_progressTweenCoroutine != null)
             {
-                LeanTween.cancel(_progressTweenId);
-                _progressTweenId = -1;
+                StopCoroutine(_progressTweenCoroutine);
+                _progressTweenCoroutine = null;
             }
             
             // Stop coroutines

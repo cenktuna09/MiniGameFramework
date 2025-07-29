@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
@@ -6,7 +7,7 @@ using UnityEngine.UI;
 namespace MiniGameFramework.UI.Panels
 {
     /// <summary>
-    /// Base class for all UI panels with lifecycle management and LeanTween animations.
+    /// Base class for all UI panels with lifecycle management and Unity default animations.
     /// Provides consistent behavior for panel transitions, state management, and event handling.
     /// </summary>
     [RequireComponent(typeof(CanvasGroup))]
@@ -40,7 +41,7 @@ namespace MiniGameFramework.UI.Panels
         [SerializeField] private TransitionType _showTransition = TransitionType.Fade;
         [SerializeField] private TransitionType _hideTransition = TransitionType.Fade;
         [SerializeField] private float _animationDuration = 0.3f;
-        [SerializeField] private LeanTweenType _easeType = LeanTweenType.easeOutCubic;
+        [SerializeField] private AnimationCurve _easeCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
         [SerializeField] private bool _blockRaycastsWhenHidden = true;
 
         // Cached components
@@ -53,7 +54,7 @@ namespace MiniGameFramework.UI.Panels
         private Vector3 _originalPosition;
         
         // Animation tracking
-        private int _currentTweenId = -1;
+        private Coroutine _currentAnimation;
 
         #region Properties
 
@@ -270,64 +271,46 @@ namespace MiniGameFramework.UI.Panels
             switch (_showTransition)
             {
                 case TransitionType.Fade:
-                    _currentTweenId = LeanTween.alphaCanvas(_canvasGroup, 1f, _animationDuration)
-                        .setEase(_easeType)
-                        .setOnComplete(() => tcs.SetResult(true))
-                        .id;
+                    _currentAnimation = StartCoroutine(AnimateCanvasAlpha(0f, 1f, _animationDuration, () => tcs.SetResult(true)));
                     break;
                     
                 case TransitionType.Scale:
                     _rectTransform.localScale = Vector3.zero;
                     _canvasGroup.alpha = 1f;
-                    _currentTweenId = LeanTween.scale(_rectTransform, _originalScale, _animationDuration)
-                        .setEase(_easeType)
-                        .setOnComplete(() => tcs.SetResult(true))
-                        .id;
+                    _currentAnimation = StartCoroutine(AnimateScale(Vector3.zero, _originalScale, _animationDuration, () => tcs.SetResult(true)));
                     break;
                     
                 case TransitionType.SlideFromTop:
                     var topPosition = _originalPosition + Vector3.up * Screen.height;
                     _rectTransform.anchoredPosition = topPosition;
                     _canvasGroup.alpha = 1f;
-                    _currentTweenId = LeanTween.move(_rectTransform, _originalPosition, _animationDuration)
-                        .setEase(_easeType)
-                        .setOnComplete(() => tcs.SetResult(true))
-                        .id;
+                    _currentAnimation = StartCoroutine(AnimatePosition(topPosition, _originalPosition, _animationDuration, () => tcs.SetResult(true)));
                     break;
                     
                 case TransitionType.SlideFromBottom:
                     var bottomPosition = _originalPosition + Vector3.down * Screen.height;
                     _rectTransform.anchoredPosition = bottomPosition;
                     _canvasGroup.alpha = 1f;
-                    _currentTweenId = LeanTween.move(_rectTransform, _originalPosition, _animationDuration)
-                        .setEase(_easeType)
-                        .setOnComplete(() => tcs.SetResult(true))
-                        .id;
+                    _currentAnimation = StartCoroutine(AnimatePosition(bottomPosition, _originalPosition, _animationDuration, () => tcs.SetResult(true)));
                     break;
                     
                 case TransitionType.SlideFromLeft:
                     var leftPosition = _originalPosition + Vector3.left * Screen.width;
                     _rectTransform.anchoredPosition = leftPosition;
                     _canvasGroup.alpha = 1f;
-                    _currentTweenId = LeanTween.move(_rectTransform, _originalPosition, _animationDuration)
-                        .setEase(_easeType)
-                        .setOnComplete(() => tcs.SetResult(true))
-                        .id;
+                    _currentAnimation = StartCoroutine(AnimatePosition(leftPosition, _originalPosition, _animationDuration, () => tcs.SetResult(true)));
                     break;
                     
                 case TransitionType.SlideFromRight:
                     var rightPosition = _originalPosition + Vector3.right * Screen.width;
                     _rectTransform.anchoredPosition = rightPosition;
                     _canvasGroup.alpha = 1f;
-                    _currentTweenId = LeanTween.move(_rectTransform, _originalPosition, _animationDuration)
-                        .setEase(_easeType)
-                        .setOnComplete(() => tcs.SetResult(true))
-                        .id;
+                    _currentAnimation = StartCoroutine(AnimatePosition(rightPosition, _originalPosition, _animationDuration, () => tcs.SetResult(true)));
                     break;
             }
             
             await tcs.Task;
-            _currentTweenId = -1;
+            _currentAnimation = null;
         }
 
         private async Task PlayHideAnimation()
@@ -337,54 +320,93 @@ namespace MiniGameFramework.UI.Panels
             switch (_hideTransition)
             {
                 case TransitionType.Fade:
-                    _currentTweenId = LeanTween.alphaCanvas(_canvasGroup, 0f, _animationDuration)
-                        .setEase(_easeType)
-                        .setOnComplete(() => tcs.SetResult(true))
-                        .id;
+                    _currentAnimation = StartCoroutine(AnimateCanvasAlpha(1f, 0f, _animationDuration, () => tcs.SetResult(true)));
                     break;
                     
                 case TransitionType.Scale:
-                    _currentTweenId = LeanTween.scale(_rectTransform, Vector3.zero, _animationDuration)
-                        .setEase(_easeType)
-                        .setOnComplete(() => tcs.SetResult(true))
-                        .id;
+                    _currentAnimation = StartCoroutine(AnimateScale(_originalScale, Vector3.zero, _animationDuration, () => tcs.SetResult(true)));
                     break;
                     
                 case TransitionType.SlideFromTop:
                     var topPosition = _originalPosition + Vector3.up * Screen.height;
-                    _currentTweenId = LeanTween.move(_rectTransform, topPosition, _animationDuration)
-                        .setEase(_easeType)
-                        .setOnComplete(() => tcs.SetResult(true))
-                        .id;
+                    _currentAnimation = StartCoroutine(AnimatePosition(_originalPosition, topPosition, _animationDuration, () => tcs.SetResult(true)));
                     break;
                     
                 case TransitionType.SlideFromBottom:
                     var bottomPosition = _originalPosition + Vector3.down * Screen.height;
-                    _currentTweenId = LeanTween.move(_rectTransform, bottomPosition, _animationDuration)
-                        .setEase(_easeType)
-                        .setOnComplete(() => tcs.SetResult(true))
-                        .id;
+                    _currentAnimation = StartCoroutine(AnimatePosition(_originalPosition, bottomPosition, _animationDuration, () => tcs.SetResult(true)));
                     break;
                     
                 case TransitionType.SlideFromLeft:
                     var leftPosition = _originalPosition + Vector3.left * Screen.width;
-                    _currentTweenId = LeanTween.move(_rectTransform, leftPosition, _animationDuration)
-                        .setEase(_easeType)
-                        .setOnComplete(() => tcs.SetResult(true))
-                        .id;
+                    _currentAnimation = StartCoroutine(AnimatePosition(_originalPosition, leftPosition, _animationDuration, () => tcs.SetResult(true)));
                     break;
                     
                 case TransitionType.SlideFromRight:
                     var rightPosition = _originalPosition + Vector3.right * Screen.width;
-                    _currentTweenId = LeanTween.move(_rectTransform, rightPosition, _animationDuration)
-                        .setEase(_easeType)
-                        .setOnComplete(() => tcs.SetResult(true))
-                        .id;
+                    _currentAnimation = StartCoroutine(AnimatePosition(_originalPosition, rightPosition, _animationDuration, () => tcs.SetResult(true)));
                     break;
             }
             
             await tcs.Task;
-            _currentTweenId = -1;
+            _currentAnimation = null;
+        }
+
+        private IEnumerator AnimateCanvasAlpha(float fromAlpha, float toAlpha, float duration, System.Action onComplete)
+        {
+            float elapsedTime = 0f;
+            
+            while (elapsedTime < duration)
+            {
+                elapsedTime += Time.unscaledDeltaTime;
+                float normalizedTime = elapsedTime / duration;
+                float easedTime = _easeCurve.Evaluate(normalizedTime);
+                
+                _canvasGroup.alpha = Mathf.Lerp(fromAlpha, toAlpha, easedTime);
+                
+                yield return null;
+            }
+            
+            _canvasGroup.alpha = toAlpha;
+            onComplete?.Invoke();
+        }
+
+        private IEnumerator AnimateScale(Vector3 fromScale, Vector3 toScale, float duration, System.Action onComplete)
+        {
+            float elapsedTime = 0f;
+            
+            while (elapsedTime < duration)
+            {
+                elapsedTime += Time.unscaledDeltaTime;
+                float normalizedTime = elapsedTime / duration;
+                float easedTime = _easeCurve.Evaluate(normalizedTime);
+                
+                _rectTransform.localScale = Vector3.Lerp(fromScale, toScale, easedTime);
+                
+                yield return null;
+            }
+            
+            _rectTransform.localScale = toScale;
+            onComplete?.Invoke();
+        }
+
+        private IEnumerator AnimatePosition(Vector3 fromPosition, Vector3 toPosition, float duration, System.Action onComplete)
+        {
+            float elapsedTime = 0f;
+            
+            while (elapsedTime < duration)
+            {
+                elapsedTime += Time.unscaledDeltaTime;
+                float normalizedTime = elapsedTime / duration;
+                float easedTime = _easeCurve.Evaluate(normalizedTime);
+                
+                _rectTransform.anchoredPosition = Vector3.Lerp(fromPosition, toPosition, easedTime);
+                
+                yield return null;
+            }
+            
+            _rectTransform.anchoredPosition = toPosition;
+            onComplete?.Invoke();
         }
 
         private void PrepareShowAnimation()
@@ -408,10 +430,10 @@ namespace MiniGameFramework.UI.Panels
 
         private void CancelCurrentAnimation()
         {
-            if (_currentTweenId != -1)
+            if (_currentAnimation != null)
             {
-                LeanTween.cancel(_currentTweenId);
-                _currentTweenId = -1;
+                StopCoroutine(_currentAnimation);
+                _currentAnimation = null;
             }
         }
 

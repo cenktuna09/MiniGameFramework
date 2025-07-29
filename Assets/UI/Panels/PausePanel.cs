@@ -18,7 +18,7 @@ namespace MiniGameFramework.UI.Panels
         [SerializeField] private Button _restartButton;
 
         [Header("Pause Configuration")]
-        [SerializeField] private bool _pauseTimeOnShow = true;
+        [SerializeField] private bool _pauseTimeOnShow = false; // Disabled for testing
         [SerializeField] private bool _showQuitButton = true;
         [SerializeField] private bool _showRestartButton = true;
         [SerializeField] private bool _confirmBeforeMainMenu = true;

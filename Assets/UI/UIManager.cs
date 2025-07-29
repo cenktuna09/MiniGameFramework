@@ -464,7 +464,7 @@ namespace MiniGameFramework.UI
             {
                 if (_instance == null)
                 {
-                    _instance = FindObjectOfType<UIManager>();
+                    _instance = FindFirstObjectByType<UIManager>();
                 }
                 return _instance;
             }

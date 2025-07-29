@@ -1,0 +1,17 @@
+{
+    "name": "MiniGameFramework.MiniGames",
+    "rootNamespace": "MiniGameFramework.MiniGames",
+    "references": [
+        "GUID:175f62c5d7a33f94b8f74033b6827ed7",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+} 

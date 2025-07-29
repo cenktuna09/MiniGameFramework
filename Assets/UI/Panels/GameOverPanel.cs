@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -35,6 +36,7 @@ namespace MiniGameFramework.UI.Panels
         [SerializeField] private bool _showShareButton = true;
         [SerializeField] private bool _showLeaderboardButton = true;
         [SerializeField] private float _scoreCountUpDuration = 2f;
+        [SerializeField] private AnimationCurve _scoreCountEaseCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
 
         [Header("Audio")]
         [SerializeField] private AudioClip _winSound;
@@ -50,8 +52,8 @@ namespace MiniGameFramework.UI.Panels
         private bool _isNewHighScore = false;
         private int _displayedScore = 0;
         
-        // Animation tweens
-        private int _scoreCountTweenId = -1;
+        // Animation coroutines
+        private Coroutine _scoreCountCoroutine;
 
         #region Events
 
@@ -338,19 +340,29 @@ namespace MiniGameFramework.UI.Panels
 
             StopScoreAnimation();
 
-            // Animate score count-up with LeanTween
-            _scoreCountTweenId = LeanTween.value(gameObject, 0, _currentGameOverData.Score, _scoreCountUpDuration)
-                .setEase(LeanTweenType.easeOutCubic)
-                .setOnUpdate((float value) => {
-                    _displayedScore = Mathf.RoundToInt(value);
-                    UpdateScoreDisplay(_displayedScore);
-                })
-                .setOnComplete(() => {
-                    _scoreCountTweenId = -1;
-                    _displayedScore = _currentGameOverData.Score;
-                    UpdateScoreDisplay(_displayedScore);
-                })
-                .id;
+            // Animate score count-up with coroutine
+            _scoreCountCoroutine = StartCoroutine(AnimateScoreCountUp(0, _currentGameOverData.Score, _scoreCountUpDuration));
+        }
+
+        private IEnumerator AnimateScoreCountUp(int fromScore, int toScore, float duration)
+        {
+            float elapsedTime = 0f;
+            
+            while (elapsedTime < duration)
+            {
+                elapsedTime += Time.unscaledDeltaTime;
+                float normalizedTime = elapsedTime / duration;
+                float easedTime = _scoreCountEaseCurve.Evaluate(normalizedTime);
+                
+                _displayedScore = Mathf.RoundToInt(Mathf.Lerp(fromScore, toScore, easedTime));
+                UpdateScoreDisplay(_displayedScore);
+                
+                yield return null;
+            }
+            
+            _displayedScore = toScore;
+            UpdateScoreDisplay(_displayedScore);
+            _scoreCountCoroutine = null;
         }
 
         private void UpdateScoreDisplay(int score)
@@ -363,10 +375,10 @@ namespace MiniGameFramework.UI.Panels
 
         private void StopScoreAnimation()
         {
-            if (_scoreCountTweenId != -1)
+            if (_scoreCountCoroutine != null)
             {
-                LeanTween.cancel(_scoreCountTweenId);
-                _scoreCountTweenId = -1;
+                StopCoroutine(_scoreCountCoroutine);
+                _scoreCountCoroutine = null;
             }
         }
 
