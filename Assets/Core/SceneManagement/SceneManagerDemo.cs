@@ -126,6 +126,7 @@ namespace MiniGameFramework.Core.SceneManagement
             }
             
             LogTest("Reloading current scene...");
+            
             _ = TestReloadCurrentSceneAsync();
         }
         

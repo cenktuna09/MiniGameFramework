@@ -148,6 +148,8 @@ namespace MiniGameFramework.Core.SceneManagement
             }
         }
         
+
+        
         private void SetupCanvas()
         {
             _canvas = GetComponent<Canvas>();
@@ -157,13 +159,14 @@ namespace MiniGameFramework.Core.SceneManagement
             }
             
             _canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            _canvas.sortingOrder = 999; // High priority, but below transitions
+            _canvas.sortingOrder = 1001; // Above transitions so loading screen is visible
             
             if (GetComponent<CanvasScaler>() == null)
             {
                 var canvasScaler = gameObject.AddComponent<CanvasScaler>();
                 canvasScaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
                 canvasScaler.referenceResolution = new Vector2(1920, 1080);
+                canvasScaler.matchWidthOrHeight = 0.5f;
             }
             
             if (GetComponent<GraphicRaycaster>() == null)
@@ -230,6 +233,8 @@ namespace MiniGameFramework.Core.SceneManagement
             // Add progress bar and text (basic implementations)
             CreateDefaultProgressBar();
             CreateDefaultLoadingText();
+            
+            // Progress text will be created in Start method to avoid order issues
         }
         
         private void CreateDefaultProgressBar()
@@ -289,13 +294,13 @@ namespace MiniGameFramework.Core.SceneManagement
             rectTransform.sizeDelta = Vector2.zero;
             rectTransform.anchoredPosition = Vector2.zero;
             
+                        // Use TMPro for loading text
             loadingText = textGO.AddComponent<TextMeshProUGUI>();
             loadingText.text = defaultLoadingText;
             loadingText.fontSize = 24f;
             loadingText.color = Color.white;
             loadingText.alignment = TextAlignmentOptions.Center;
         }
-        
         private async Task SetVisibility(bool visible, bool immediate = false)
         {
             if (_isAnimating) return;
@@ -362,13 +367,18 @@ namespace MiniGameFramework.Core.SceneManagement
             
             if (progressText != null)
             {
-                progressText.text = $"{Mathf.RoundToInt(_currentProgress * 100)}%";
+                var percentage = Mathf.RoundToInt(_currentProgress * 100);
+                progressText.text = $"{percentage}%";
             }
         }
         
         private void SubscribeToEvents()
         {
-            if (_eventBus == null) return;
+            if (_eventBus == null) 
+            {
+                Debug.LogError("[LoadingScreen] EventBus is null! Cannot subscribe to events.");
+                return;
+            }
             
             _eventBus.Subscribe<SceneLoadingStartedEvent>(OnSceneLoadingStarted);
             _eventBus.Subscribe<SceneLoadingCompletedEvent>(OnSceneLoadingCompleted);
