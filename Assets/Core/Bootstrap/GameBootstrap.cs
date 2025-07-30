@@ -4,6 +4,7 @@ using MiniGameFramework.Core.Events;
 using MiniGameFramework.Core.SaveSystem;
 using MiniGameFramework.Core.StateManagement;
 using MiniGameFramework.Core.DI;
+using MiniGameFramework.Core.GameManagement;
 
 namespace MiniGameFramework.Core.Bootstrap
 {
@@ -25,6 +26,7 @@ namespace MiniGameFramework.Core.Bootstrap
         private IEventBus _eventBus;
         private ISaveSystem _saveSystem;
         private IGameStateManager _gameStateManager;
+        private IGameManager _gameManager;
         private bool _isInitialized = false;
 
         #region Unity Lifecycle
@@ -76,6 +78,9 @@ namespace MiniGameFramework.Core.Bootstrap
                 // Initialize GameStateManager (depends on EventBus)
                 InitializeGameStateManager();
 
+                // Initialize GameManager (depends on EventBus, SaveSystem, GameStateManager)
+                InitializeGameManager();
+
                 // Register services with ServiceLocator
                 RegisterServices();
 
@@ -109,6 +114,17 @@ namespace MiniGameFramework.Core.Bootstrap
             LogIfEnabled("GameStateManager initialized");
         }
 
+        private void InitializeGameManager()
+        {
+            // Create GameManager GameObject
+            var gameManagerObject = new GameObject("GameManager");
+            gameManagerObject.transform.SetParent(this.transform);
+            
+            // Add GameManager component directly
+            _gameManager = gameManagerObject.AddComponent<GameManager>();
+            LogIfEnabled("GameManager initialized");
+        }
+
         private void RegisterServices()
         {
             var serviceLocator = ServiceLocator.Instance;
@@ -124,6 +140,13 @@ namespace MiniGameFramework.Core.Bootstrap
             // Register GameStateManager
             serviceLocator.Register<IGameStateManager>(_gameStateManager);
             LogIfEnabled("GameStateManager registered with ServiceLocator");
+
+            // Register GameManager (if available)
+            if (_gameManager != null)
+            {
+                serviceLocator.Register<IGameManager>(_gameManager);
+                LogIfEnabled("GameManager registered with ServiceLocator");
+            }
 
             LogIfEnabled("All services registered successfully");
         }
@@ -160,6 +183,16 @@ namespace MiniGameFramework.Core.Bootstrap
         /// </summary>
         public IGameStateManager GameStateManager => _gameStateManager;
 
+        /// <summary>
+        /// Get the GameManager instance (if available)
+        /// </summary>
+        public IGameManager GameManager => _gameManager;
+
+        /// <summary>
+        /// Check if GameManager is available
+        /// </summary>
+        public bool IsGameManagerAvailable => _gameManager != null;
+
         #endregion
 
         #region Cleanup
@@ -181,6 +214,17 @@ namespace MiniGameFramework.Core.Bootstrap
 
             // Clear EventBus subscriptions
             _eventBus?.ClearAllSubscriptions();
+
+            // Cleanup GameManager
+            if (_gameManager != null)
+            {
+                var gameManagerComponent = _gameManager as MonoBehaviour;
+                if (gameManagerComponent != null)
+                {
+                    DestroyImmediate(gameManagerComponent.gameObject);
+                }
+                _gameManager = null;
+            }
 
             _isInitialized = false;
             LogIfEnabled("Services cleanup complete");

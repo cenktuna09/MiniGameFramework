@@ -19,6 +19,15 @@ namespace MiniGameFramework.Core.SaveSystem
         Task<bool> SaveAsync<T>(string key, T data);
         
         /// <summary>
+        /// Save data to persistent storage synchronously.
+        /// </summary>
+        /// <typeparam name="T">The type of data to save.</typeparam>
+        /// <param name="key">The key to save the data under.</param>
+        /// <param name="data">The data to save.</param>
+        /// <returns>True if save was successful, false otherwise.</returns>
+        bool Save<T>(string key, T data);
+        
+        /// <summary>
         /// Load data from persistent storage.
         /// </summary>
         /// <typeparam name="T">The type of data to load.</typeparam>
@@ -26,6 +35,15 @@ namespace MiniGameFramework.Core.SaveSystem
         /// <param name="defaultValue">Default value to return if data doesn't exist.</param>
         /// <returns>The loaded data, or the default value if not found.</returns>
         Task<T> LoadAsync<T>(string key, T defaultValue = default);
+        
+        /// <summary>
+        /// Load data from persistent storage synchronously.
+        /// </summary>
+        /// <typeparam name="T">The type of data to load.</typeparam>
+        /// <param name="key">The key to load the data from.</param>
+        /// <param name="defaultValue">Default value to return if data doesn't exist.</param>
+        /// <returns>The loaded data, or the default value if not found.</returns>
+        T Load<T>(string key, T defaultValue = default);
         
         /// <summary>
         /// Check if data exists for a given key.

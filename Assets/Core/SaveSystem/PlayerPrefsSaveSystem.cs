@@ -54,6 +54,34 @@ namespace MiniGameFramework.Core.SaveSystem
         }
         
         /// <summary>
+        /// Save data to PlayerPrefs using JSON serialization (synchronous).
+        /// </summary>
+        public bool Save<T>(string key, T data)
+        {
+            try
+            {
+                var fullKey = GetFullKey(key);
+                var json = JsonUtility.ToJson(data);
+                
+                PlayerPrefs.SetString(fullKey, json);
+                PlayerPrefs.Save();
+                
+                knownKeys.Add(key);
+                SaveKnownKeys();
+                
+                OnDataSaved?.Invoke(key);
+                
+                Debug.Log($"[SaveSystem] Saved data for key: {key}");
+                return true;
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[SaveSystem] Failed to save data for key {key}: {e.Message}");
+                return false;
+            }
+        }
+        
+        /// <summary>
         /// Load data from PlayerPrefs using JSON deserialization.
         /// </summary>
         public async Task<T> LoadAsync<T>(string key, T defaultValue = default)
@@ -76,6 +104,36 @@ namespace MiniGameFramework.Core.SaveSystem
                 
                 Debug.Log($"[SaveSystem] Loaded data for key: {key}");
                 await Task.CompletedTask;
+                return data;
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[SaveSystem] Failed to load data for key {key}: {e.Message}");
+                return defaultValue;
+            }
+        }
+        
+        /// <summary>
+        /// Load data from PlayerPrefs using JSON deserialization (synchronous).
+        /// </summary>
+        public T Load<T>(string key, T defaultValue = default)
+        {
+            try
+            {
+                var fullKey = GetFullKey(key);
+                
+                if (!PlayerPrefs.HasKey(fullKey))
+                {
+                    Debug.Log($"[SaveSystem] No data found for key: {key}");
+                    return defaultValue;
+                }
+                
+                var json = PlayerPrefs.GetString(fullKey);
+                var data = JsonUtility.FromJson<T>(json);
+                
+                OnDataLoaded?.Invoke(key);
+                
+                Debug.Log($"[SaveSystem] Loaded data for key: {key}");
                 return data;
             }
             catch (Exception e)

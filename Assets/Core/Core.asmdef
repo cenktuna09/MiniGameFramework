@@ -4,7 +4,8 @@
     "references": [
         "Unity.InputSystem",
         "Unity.Addressables",
-        "Unity.TextMeshPro"
+        "Unity.TextMeshPro",
+        "MiniGameFramework.MiniGames"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
