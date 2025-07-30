@@ -72,23 +72,23 @@ namespace MiniGameFramework.Core.SceneManagement
         
         private void HandleKeyboardInput()
         {
-            if (Input.GetKeyDown(KeyCode.R))
+            if (UnityEngine.Input.GetKeyDown(KeyCode.R))
             {
                 TestReloadCurrentScene();
             }
-            else if (Input.GetKeyDown(KeyCode.L))
+            else if (UnityEngine.Input.GetKeyDown(KeyCode.L))
             {
                 TestLoadSceneByName();
             }
-            else if (Input.GetKeyDown(KeyCode.T))
+            else if (UnityEngine.Input.GetKeyDown(KeyCode.T))
             {
                 TestTransitionOnly();
             }
-            else if (Input.GetKeyDown(KeyCode.P))
+            else if (UnityEngine.Input.GetKeyDown(KeyCode.P))
             {
                 TestPreloadAndActivate();
             }
-            else if (Input.GetKeyDown(KeyCode.H))
+            else if (UnityEngine.Input.GetKeyDown(KeyCode.H))
             {
                 LogTestInstructions();
             }

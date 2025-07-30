@@ -20,6 +20,9 @@ namespace MiniGameFramework.Core.StateManagement
             var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
             scene.name = "GameStateManagerTest";
 
+            // Create EventSystem for UI interaction
+            CreateEventSystem();
+
             // Create UI Canvas
             var canvasGO = CreateCanvas();
             var canvas = canvasGO.GetComponent<Canvas>();
@@ -57,6 +60,15 @@ namespace MiniGameFramework.Core.StateManagement
             var bootstrap = bootstrapGO.AddComponent<MiniGameFramework.Core.Bootstrap.GameBootstrap>();
             
             return bootstrapGO;
+        }
+
+        private static void CreateEventSystem()
+        {
+            var eventSystemGO = new GameObject("EventSystem");
+            eventSystemGO.AddComponent<UnityEngine.EventSystems.EventSystem>();
+            eventSystemGO.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
+
+            Debug.Log("[GameStateManagerTestSetup] EventSystem created");
         }
 
         private static void CreateUILayout(Canvas canvas)
