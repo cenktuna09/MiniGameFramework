@@ -402,7 +402,8 @@ namespace MiniGameFramework.MiniGames.Match3
         private void StartHintTimer()
         {
             StopHintTimer();
-            if (hintDelay > 0)
+            var delay = gameConfig?.hintDelay ?? hintDelay;
+            if (delay > 0)
             {
                 hintCoroutine = StartCoroutine(HintTimerCoroutine());
             }
@@ -433,7 +434,8 @@ namespace MiniGameFramework.MiniGames.Match3
         /// </summary>
         private IEnumerator HintTimerCoroutine()
         {
-            yield return new WaitForSeconds(hintDelay);
+            var delay = gameConfig?.hintDelay ?? hintDelay;
+            yield return new WaitForSeconds(delay);
             
             if (possibleSwaps.Count > 0 && currentState == GameState.Playing)
             {
@@ -594,8 +596,11 @@ namespace MiniGameFramework.MiniGames.Match3
                 spriteRendererA.sortingOrder = 1;
             }
             
+            // Get animation duration from config
+            var duration = gameConfig?.swapDuration ?? swapDuration;
+            
             // Start LeanTween animations
-            LeanTween.move(visualA, posA, swapDuration)
+            LeanTween.move(visualA, posA, duration)
                 .setOnComplete(() => {
                     Debug.Log("[Match3Game] ✅ Tile A animation completed");
                     if (spriteRendererA != null)
@@ -604,10 +609,10 @@ namespace MiniGameFramework.MiniGames.Match3
                     }
                 });
             
-            LeanTween.move(visualB, posB, swapDuration);
+            LeanTween.move(visualB, posB, duration);
             
             // Wait for animations to complete
-            yield return new WaitForSeconds(swapDuration);
+            yield return new WaitForSeconds(duration);
             
             // Swap visual references AFTER animation
             visualTiles[swap.tileA.x, swap.tileA.y] = visualB;
@@ -631,33 +636,41 @@ namespace MiniGameFramework.MiniGames.Match3
         /// </summary>
         private void ShowInvalidMoveAnimation(GameObject tileA, GameObject tileB)
         {
-            Debug.Log("[Match3Game] ❌ Showing invalid move animation");
-            
-            var posA = tileA.transform.position;
-            var posB = tileB.transform.position;
-            
-            // Bring tiles to front for animation
-            var spriteRendererA = tileA.GetComponent<SpriteRenderer>();
-            var spriteRendererB = tileB.GetComponent<SpriteRenderer>();
-            
-            if (spriteRendererA != null) spriteRendererA.sortingOrder = 1;
-            if (spriteRendererB != null) spriteRendererB.sortingOrder = 1;
-            
-            // Move to swap positions (faster than valid moves)
-            LeanTween.move(tileA, posB, 0.2f);
-            LeanTween.move(tileB, posA, 0.2f)
-                .setOnComplete(() => {
-                    // Return to original positions
-                    LeanTween.move(tileA, posA, 0.2f)
-                        .setOnComplete(() => {
-                            if (spriteRendererA != null) spriteRendererA.sortingOrder = 0;
-                            if (spriteRendererB != null) spriteRendererB.sortingOrder = 0;
-                        });
-                    LeanTween.move(tileB, posB, 0.2f);
-                });
-            
-            // TODO: Play error sound
-            // SoundManager.instance.PlaySound("Error");
+            errorHandler?.SafeExecute(() =>
+            {
+                Debug.Log("[Match3Game] ❌ Showing invalid move animation");
+                
+                var posA = tileA.transform.position;
+                var posB = tileB.transform.position;
+                
+                // Validate animation parameters
+                errorHandler?.ValidateAnimation("InvalidMove", tileA, 0.2f);
+                errorHandler?.ValidateAnimation("InvalidMove", tileB, 0.2f);
+                
+                // Bring tiles to front for animation
+                var spriteRendererA = tileA.GetComponent<SpriteRenderer>();
+                var spriteRendererB = tileB.GetComponent<SpriteRenderer>();
+                
+                if (spriteRendererA != null) spriteRendererA.sortingOrder = 1;
+                if (spriteRendererB != null) spriteRendererB.sortingOrder = 1;
+                
+                // Move to swap positions (faster than valid moves)
+                LeanTween.move(tileA, posB, 0.2f);
+                LeanTween.move(tileB, posA, 0.2f)
+                    .setOnComplete(() => {
+                        // Return to original positions
+                        LeanTween.move(tileA, posA, 0.2f)
+                            .setOnComplete(() => {
+                                if (spriteRendererA != null) spriteRendererA.sortingOrder = 0;
+                                if (spriteRendererB != null) spriteRendererB.sortingOrder = 0;
+                            });
+                        LeanTween.move(tileB, posB, 0.2f);
+                    });
+                
+                // TODO: Play error sound
+                // SoundManager.instance.PlaySound("Error");
+                
+            }, "Show invalid move animation");
         }
         
         /// <summary>
@@ -732,12 +745,19 @@ namespace MiniGameFramework.MiniGames.Match3
         /// </summary>
         private void SwapTilesInBoard(Swap swap)
         {
-            var tileA = currentBoard.GetTile(swap.tileA);
-            var tileB = currentBoard.GetTile(swap.tileB);
-            
-            currentBoard = currentBoard
-                .SetTile(swap.tileA, tileB.WithPosition(swap.tileA))
-                .SetTile(swap.tileB, tileA.WithPosition(swap.tileB));
+            errorHandler?.SafeExecute(() =>
+            {
+                var tileA = currentBoard.GetTile(swap.tileA);
+                var tileB = currentBoard.GetTile(swap.tileB);
+                
+                currentBoard = currentBoard
+                    .SetTile(swap.tileA, tileB.WithPosition(swap.tileA))
+                    .SetTile(swap.tileB, tileA.WithPosition(swap.tileB));
+                
+                // Update game logic manager
+                gameLogicManager?.UpdateBoard(currentBoard);
+                
+            }, "Swap tiles in board");
         }
         
         /// <summary>
@@ -751,10 +771,11 @@ namespace MiniGameFramework.MiniGames.Match3
             
             while (true)
             {
-                var matches = MatchDetector.FindMatches(currentBoard);
-                Debug.Log($"[Match3Game] 🔍 Checking for matches... Found: {matches.Count}");
+                // Use game logic manager for match detection
+                var matches = gameLogicManager?.ProcessMatches() ?? MatchDetector.FindMatches(currentBoard);
+                Debug.Log($"[Match3Game] 🔍 Checking for matches... Found: {matches?.Count ?? 0}");
                 
-                if (matches.Count == 0) 
+                if (matches == null || matches.Count == 0) 
                 {
                     Debug.Log("[Match3Game] ✅ No more matches found - cascade complete");
                     break;
@@ -776,9 +797,17 @@ namespace MiniGameFramework.MiniGames.Match3
                 Debug.Log("[Match3Game] 💣 Exploding tiles...");
                 ExplodeTiles(matches);
                 
+                // # Update game logic manager with exploded board state
+                gameLogicManager?.UpdateBoard(currentBoard);
+                Debug.Log($"[Match3Game] 🔄 Updated game logic manager board after explosion. Board state: {currentBoard.Width}x{currentBoard.Height}");
+                
                 // # Apply gravity and refill
                 Debug.Log("[Match3Game] 🌍 Applying gravity and refilling...");
                 yield return StartCoroutine(ApplyGravityAndRefill());
+                
+                // # Update game logic manager with final board state after gravity and refill
+                gameLogicManager?.UpdateBoard(currentBoard);
+                Debug.Log($"[Match3Game] 🔄 Updated game logic manager board after gravity and refill. Board state: {currentBoard.Width}x{currentBoard.Height}");
                 
                 Debug.Log($"[Match3Game] 🎯 Cascade {cascadeCount} complete! Score: +{matchScore}");
             }
@@ -793,9 +822,11 @@ namespace MiniGameFramework.MiniGames.Match3
         private int CalculateMatchScore(List<MatchDetector.Match> matches, int cascadeMultiplier)
         {
             int baseScore = 0;
+            var pointsPerTileValue = gameConfig?.pointsPerTile ?? pointsPerTile;
+            
             foreach (var match in matches)
             {
-                baseScore += match.Length * pointsPerTile;
+                baseScore += match.Length * pointsPerTileValue;
             }
             
             // Apply cascade bonus (2x, 3x, 4x, etc.)
@@ -895,7 +926,14 @@ namespace MiniGameFramework.MiniGames.Match3
         [ContextMenu("Debug Board State")]
         public void DebugBoardState()
         {
-            Debug.Log("[Match3Game] 📊 Current board state:");
+            Debug.Log($"[Match3Game] 📊 Current Board State:");
+            Debug.Log($"Board Size: {currentBoard.Width}x{currentBoard.Height}");
+            Debug.Log($"Visual Tiles: {visualTiles?.GetLength(0) ?? 0}x{visualTiles?.GetLength(1) ?? 0}");
+            Debug.Log($"Current Score: {currentScore}");
+            Debug.Log($"Is Processing Matches: {isProcessingMatches}");
+            Debug.Log($"Is Swapping: {isSwapping}");
+            
+            // Log board contents
             for (int y = currentBoard.Height - 1; y >= 0; y--)
             {
                 var row = "";
@@ -905,6 +943,26 @@ namespace MiniGameFramework.MiniGames.Match3
                     row += tile.IsValid ? tile.Type.ToString()[0] : ".";
                 }
                 Debug.Log($"[Match3Game] Row {y}: {row}");
+            }
+            
+            // Log game logic manager state
+            if (gameLogicManager != null)
+            {
+                var logicBoard = gameLogicManager.GetCurrentBoard();
+                Debug.Log($"[Match3Game] 🧠 Game Logic Manager Board State:");
+                Debug.Log($"Logic Board Size: {logicBoard.Width}x{logicBoard.Height}");
+                
+                // Log logic board contents
+                for (int y = logicBoard.Height - 1; y >= 0; y--)
+                {
+                    var row = "";
+                    for (int x = 0; x < logicBoard.Width; x++)
+                    {
+                        var tile = logicBoard.GetTile(x, y);
+                        row += tile.IsValid ? tile.Type.ToString()[0] : ".";
+                    }
+                    Debug.Log($"[Match3Game] Logic Row {y}: {row}");
+                }
             }
         }
         
@@ -1091,8 +1149,36 @@ namespace MiniGameFramework.MiniGames.Match3
             gameConfig.hintDelay = hintDelay;
             gameConfig.ValidateSettings();
             
+            // Validate configuration with error handler
+            errorHandler?.ValidateConfiguration(gameConfig);
+            
             // Initialize error handler (Week 3-4)
             errorHandler = new Match3ErrorHandler(eventBus, true, true, 100);
+            
+            // Subscribe to game logic manager events
+            if (gameLogicManager != null)
+            {
+                gameLogicManager.OnPossibleSwapsUpdated += (swaps) => 
+                {
+                    possibleSwaps = swaps;
+                    Debug.Log($"[Match3Game] 📋 Possible swaps updated: {swaps.Count} swaps");
+                };
+                
+                gameLogicManager.OnMatchesFound += (matches) => 
+                {
+                    Debug.Log($"[Match3Game] 🎯 Matches found: {matches.Count} matches");
+                };
+                
+                gameLogicManager.OnValidSwapExecuted += (swap) => 
+                {
+                    Debug.Log($"[Match3Game] ✅ Valid swap executed: {swap.tileA} ↔ {swap.tileB}");
+                };
+                
+                gameLogicManager.OnInvalidSwapAttempted += (swap) => 
+                {
+                    Debug.Log($"[Match3Game] ❌ Invalid swap attempted: {swap.tileA} ↔ {swap.tileB}");
+                };
+            }
             
             Debug.Log("[Match3Game] ✅ Foundation systems and new components initialized");
         }
@@ -1225,7 +1311,8 @@ namespace MiniGameFramework.MiniGames.Match3
             
             // Wait for ALL gravity animations to complete before refill
             Debug.Log("[Match3Game] ⏳ Waiting for gravity animations to complete...");
-            yield return new WaitForSeconds(gravityDuration + 0.3f); // Extra buffer for safety
+            var duration = gameConfig?.gravityDuration ?? gravityDuration;
+            yield return new WaitForSeconds(duration + 0.3f); // Extra buffer for safety
             
             // # PHASE 2: Verify all tiles have fallen before refill
             Debug.Log("[Match3Game] 🔍 Verifying gravity completion...");
@@ -1241,7 +1328,7 @@ namespace MiniGameFramework.MiniGames.Match3
             }
             
             // Wait for all refill animations to complete
-            yield return new WaitForSeconds(gravityDuration + 0.2f);
+            yield return new WaitForSeconds(duration + 0.2f);
             
             Debug.Log("[Match3Game] ✅ Optimized gravity and refill process completed");
         }
