@@ -942,6 +942,87 @@ namespace MiniGameFramework.MiniGames.Match3
             DebugBoardState();
         }
         
+        [ContextMenu("Create Bottom Match Test")]
+        public void CreateBottomMatchTest()
+        {
+            Debug.Log("[Match3Game] 🧪 Creating bottom match test scenario...");
+            
+            // Alt kısımda üçlü match oluştur (soldan sağa, yukarıdan aşağıya)
+            var positionsToExplode = new List<Vector2Int>
+            {
+                new Vector2Int(0, 0), // Sol alt köşe
+                new Vector2Int(1, 0), // Orta alt
+                new Vector2Int(2, 0), // Sağ alt
+                new Vector2Int(0, 1), // Sol orta
+                new Vector2Int(1, 1), // Orta orta
+                new Vector2Int(2, 1), // Sağ orta
+                new Vector2Int(0, 2), // Sol üst
+                new Vector2Int(1, 2), // Orta üst
+                new Vector2Int(2, 2)  // Sağ üst
+            };
+            
+            Debug.Log($"[Match3Game] 💥 Exploding {positionsToExplode.Count} tiles in bottom match pattern...");
+            
+            foreach (var pos in positionsToExplode)
+            {
+                // Board data'yı güncelle
+                currentBoard = currentBoard.SetTile(pos.x, pos.y, new TileData(TileType.Empty, pos));
+                
+                // Visual tile'ı kaldır
+                if (visualTiles[pos.x, pos.y] != null)
+                {
+                    tilePool.ReturnTile(visualTiles[pos.x, pos.y]);
+                    visualTiles[pos.x, pos.y] = null;
+                }
+                
+                Debug.Log($"[Match3Game] 💥 Exploded tile at ({pos.x},{pos.y})");
+            }
+            
+            Debug.Log("[Match3Game] ✅ Bottom match test scenario created");
+            DebugBoardState();
+        }
+        
+        [ContextMenu("Create Cascade Test")]
+        public void CreateCascadeTest()
+        {
+            Debug.Log("[Match3Game] 🧪 Creating cascade test scenario...");
+            
+            // Daha büyük bir alan explode et (cascade effect'i görmek için)
+            var positionsToExplode = new List<Vector2Int>
+            {
+                // Column 0: Alt kısımda büyük boşluk
+                new Vector2Int(0, 0), // En alt
+                new Vector2Int(0, 1), // Alt orta
+                new Vector2Int(0, 2), // Üst orta
+                // Column 1: Orta kısımda boşluk
+                new Vector2Int(1, 1), // Orta
+                new Vector2Int(1, 2), // Üst
+                // Column 2: Üst kısımda boşluk
+                new Vector2Int(2, 3), // Üst
+                new Vector2Int(2, 4), // En üst
+            };
+            
+            Debug.Log($"[Match3Game] 💥 Exploding {positionsToExplode.Count} tiles for cascade test...");
+            
+            foreach (var pos in positionsToExplode)
+            {
+                // Board data'yı güncelle
+                currentBoard = currentBoard.SetTile(pos.x, pos.y, new TileData(TileType.Empty, pos));
+                
+                // Visual tile'ı kaldır
+                if (visualTiles[pos.x, pos.y] != null)
+                {
+                    tilePool.ReturnTile(visualTiles[pos.x, pos.y]);
+                    visualTiles[pos.x, pos.y] = null;
+                }
+                
+                Debug.Log($"[Match3Game] 💥 Exploded tile at ({pos.x},{pos.y})");
+            }
+            
+            Debug.Log("[Match3Game] ✅ Cascade test scenario created");
+            DebugBoardState();
+        }
+        
         [ContextMenu("Test Gravity and Show Result")]
         public void TestGravityAndShowResult()
         {
@@ -1090,191 +1171,302 @@ namespace MiniGameFramework.MiniGames.Match3
         }
         
         /// <summary>
-        /// Clean gravity and refill system
+        /// Optimized gravity and refill system with proper timing and delayed refill
         /// </summary>
         private IEnumerator ApplyGravityAndRefill()
         {
-            Debug.Log("[Match3Game] 🌍 Starting gravity and refill process...");
+            Debug.Log("[Match3Game] 🌍 Starting optimized gravity and refill process...");
             
-            // # Apply gravity (tiles fall down)
-            Debug.Log("[Match3Game] ⬇️ Applying gravity to all columns...");
+            // # PHASE 1: Apply gravity to all columns simultaneously
+            Debug.Log("[Match3Game] ⬇️ Applying gravity to all columns in parallel...");
+            var gravityCoroutines = new List<Coroutine>();
+            
             for (int x = 0; x < currentBoard.Width; x++)
             {
-                yield return StartCoroutine(ApplyGravityToColumn(x));
+                gravityCoroutines.Add(StartCoroutine(ApplyGravityToColumn(x)));
             }
             
-            // # Refill empty spaces
-            Debug.Log("[Match3Game] 🔄 Refilling empty spaces...");
+            // Wait for ALL gravity animations to complete before refill
+            Debug.Log("[Match3Game] ⏳ Waiting for gravity animations to complete...");
+            yield return new WaitForSeconds(gravityDuration + 0.3f); // Extra buffer for safety
+            
+            // # PHASE 2: Verify all tiles have fallen before refill
+            Debug.Log("[Match3Game] 🔍 Verifying gravity completion...");
+            yield return StartCoroutine(VerifyGravityCompletion());
+            
+            // # PHASE 3: Refill all columns simultaneously (DELAYED)
+            Debug.Log("[Match3Game] 🔄 Starting DELAYED refill for all columns...");
+            var refillCoroutines = new List<Coroutine>();
+            
             for (int x = 0; x < currentBoard.Width; x++)
             {
-                yield return StartCoroutine(RefillColumn(x));
+                refillCoroutines.Add(StartCoroutine(RefillColumn(x)));
             }
             
-            Debug.Log("[Match3Game] ✅ Gravity and refill process completed");
+            // Wait for all refill animations to complete
+            yield return new WaitForSeconds(gravityDuration + 0.2f);
+            
+            Debug.Log("[Match3Game] ✅ Optimized gravity and refill process completed");
         }
         
         /// <summary>
-        /// Applies gravity to a single column with smooth animation
+        /// Verifies that all gravity animations have completed before refill
+        /// </summary>
+        private IEnumerator VerifyGravityCompletion()
+        {
+            Debug.Log("[Match3Game] 🔍 Verifying all tiles have fallen to correct positions...");
+            
+            // Check if any tiles are still moving
+            bool anyMoving = true;
+            float timeout = 2f;
+            float elapsed = 0f;
+            
+            while (anyMoving && elapsed < timeout)
+            {
+                anyMoving = false;
+                
+                // Check all visual tiles for movement
+                for (int x = 0; x < currentBoard.Width; x++)
+                {
+                    for (int y = 0; y < currentBoard.Height; y++)
+                    {
+                        var visual = visualTiles[x, y];
+                        if (visual != null)
+                        {
+                            var tileVisual = visual.GetComponent<TileVisual>();
+                            if (tileVisual?.IsMoving == true)
+                            {
+                                anyMoving = true;
+                                Debug.Log($"[Match3Game] 🔄 Tile at ({x},{y}) is still moving...");
+                                break;
+                            }
+                        }
+                    }
+                    if (anyMoving) break;
+                }
+                
+                if (!anyMoving)
+                {
+                    Debug.Log("[Match3Game] ✅ All gravity animations verified complete!");
+                    break;
+                }
+                
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+            
+            if (elapsed >= timeout)
+            {
+                Debug.LogWarning("[Match3Game] ⚠️ Gravity verification timeout - proceeding with refill");
+            }
+            
+            // Extra safety delay
+            yield return new WaitForSeconds(0.1f);
+        }
+        
+        /// <summary>
+        /// Applies gravity to a single column with LeanTween batch processing
+        /// </summary>
+        /// <summary>
+        /// Applies gravity to a single column, making tiles fall to the lowest available position
+        /// Implements proper cascade effect where tiles fall to the bottom-most empty space
         /// </summary>
         private IEnumerator ApplyGravityToColumn(int column)
         {
             Debug.Log($"[Match3Game] 🌍 Applying gravity to column {column}");
             
+            // # PHASE 1: Calculate final positions for all tiles using proper cascade algorithm
             var tilesToMove = new List<(int fromY, int toY, TileData tile, GameObject visual)>();
             
-            // # AŞAĞIDAN YUKARI TARAMA - Daha kapsamlı algoritma
-            // Tüm boş pozisyonları bul ve her biri için üstündeki tüm tile'ları aşağı çek
-            var emptyPositions = new List<int>();
-            
-            for (int y = currentBoard.Height - 1; y >= 0; y--)
+            // # Step 1: Find all tiles in this column (from bottom to top)
+            var tilesInColumn = new List<(int y, TileData tile, GameObject visual)>();
+            for (int y = 0; y < currentBoard.Height; y++)
             {
                 var tile = currentBoard.GetTile(column, y);
-                Debug.Log($"[Match3Game] Column {column}, Y {y}: {tile.Type} (Valid: {tile.IsValid})");
-                
-                if (!tile.IsValid) // Boş pozisyon bulduk
+                if (tile.IsValid)
                 {
-                    emptyPositions.Add(y);
+                    tilesInColumn.Add((y, tile, visualTiles[column, y]));
                 }
             }
             
-            Debug.Log($"[Match3Game] Column {column}: Found {emptyPositions.Count} empty positions");
+            Debug.Log($"[Match3Game] Column {column}: Found {tilesInColumn.Count} tiles");
             
-            // Her boş pozisyon için üstündeki tüm tile'ları aşağı çek
-            foreach (int emptyY in emptyPositions)
+            // # Step 2: Calculate final positions using bottom-up approach
+            // Start from the bottom and place tiles in the lowest available positions
+            var finalPositions = new List<(int fromY, int toY, TileData tile, GameObject visual)>();
+            int nextEmptyPosition = 0; // Track the next available position from bottom
+            
+            // Sort tiles by their current Y position (bottom to top)
+            var sortedTiles = tilesInColumn.OrderBy(t => t.y).ToList();
+            
+            foreach (var (currentY, tile, visual) in sortedTiles)
             {
-                Debug.Log($"[Match3Game] Processing empty position at Y={emptyY}");
+                // Find the lowest available position for this tile
+                int targetY = nextEmptyPosition;
                 
-                // Bu boş pozisyonun üstündeki tüm tile'ları bul
-                var tilesAbove = new List<(int fromY, TileData tile, GameObject visual)>();
+                // Move to the next available position
+                nextEmptyPosition++;
                 
-                for (int aboveY = emptyY + 1; aboveY < currentBoard.Height; aboveY++)
+                // Only add movement if the tile actually needs to move
+                if (currentY != targetY)
                 {
-                    var tileAbove = currentBoard.GetTile(column, aboveY);
-                    if (tileAbove.IsValid)
-                    {
-                        tilesAbove.Add((aboveY, tileAbove, visualTiles[column, aboveY]));
-                        Debug.Log($"[Match3Game] Found tile above: ({column},{aboveY}) -> ({column},{emptyY})");
-                    }
-                }
-                
-                // Bu tile'ları aşağı çek (en yakın boş pozisyondan başlayarak)
-                for (int i = 0; i < tilesAbove.Count; i++)
-                {
-                    var (fromY, tile, visual) = tilesAbove[i];
-                    var targetY = emptyY + i; // Her tile bir pozisyon aşağı
-                    
-                    if (targetY < currentBoard.Height)
-                    {
-                        Debug.Log($"[Match3Game] Moving tile down: ({column},{fromY}) -> ({column},{targetY})");
-                        tilesToMove.Add((fromY, targetY, tile, visual));
-                    }
+                    Debug.Log($"[Match3Game] CASCADE: ({column},{currentY}) -> ({column},{targetY}) - Tile falls {currentY - targetY} positions");
+                    finalPositions.Add((currentY, targetY, tile, visual));
                 }
             }
             
-            // # YENİ: Aşağıdan yukarı doğru cascade effect
-            // Eğer aşağıda boşluk varsa, yukarıdaki tüm tile'ları aşağı çek
-            for (int y = 0; y < currentBoard.Height - 1; y++)
-            {
-                var currentTile = currentBoard.GetTile(column, y);
-                var nextTile = currentBoard.GetTile(column, y + 1);
-                
-                // Eğer şu anki pozisyon boş ve üstünde tile varsa
-                if (!currentTile.IsValid && nextTile.IsValid)
-                {
-                    Debug.Log($"[Match3Game] Cascade effect: ({column},{y+1}) -> ({column},{y})");
-                    tilesToMove.Add((y + 1, y, nextTile, visualTiles[column, y + 1]));
-                }
-            }
-            
-            // # Duplicate tile hareketlerini temizle
-            var uniqueMoves = new List<(int fromY, int toY, TileData tile, GameObject visual)>();
-            var processedTiles = new HashSet<GameObject>();
-            
-            foreach (var move in tilesToMove)
-            {
-                if (!processedTiles.Contains(move.visual))
-                {
-                    uniqueMoves.Add(move);
-                    processedTiles.Add(move.visual);
-                }
-            }
-            
-            tilesToMove = uniqueMoves;
+            tilesToMove = finalPositions;
             
             Debug.Log($"[Match3Game] Column {column}: {tilesToMove.Count} tiles need to move");
             
-            // # Move tiles with animation
-            foreach (var (fromY, toY, tile, visual) in tilesToMove)
-            {
-                Debug.Log($"[Match3Game] Moving tile from ({column},{fromY}) to ({column},{toY})");
-                
-                // Update board data
-                currentBoard = currentBoard.SetTile(column, fromY, new TileData(TileType.Empty, new Vector2Int(column, fromY)));
-                currentBoard = currentBoard.SetTile(column, toY, tile.WithPosition(new Vector2Int(column, toY)));
-                
-                // Update visual position
-                visualTiles[column, fromY] = null;
-                visualTiles[column, toY] = visual;
-                
-                // Animate visual tile with LeanTween
-                if (visual != null)
-                {
-                    var targetPos = new Vector3(column * tileSize, toY * tileSize, 0);
-                    Debug.Log($"[Match3Game] 🎬 Animating tile with LeanTween: ({column},{fromY}) -> ({column},{toY})");
-                    
-                    // Use LeanTween for gravity animation with easing
-                    var tween = LeanTween.move(visual, targetPos, gravityDuration);
-                    tween.setEase(LeanTweenType.easeInQuad);
-                    tween.setOnComplete(() => {
-                        Debug.Log($"[Match3Game] ✅ Gravity animation completed: ({column},{fromY}) -> ({column},{toY})");
-                    });
-                }
-            }
-            
-            // # Wait for LeanTween animations to complete
+            // # PHASE 2: Execute all animations with proper completion tracking
             if (tilesToMove.Count > 0)
             {
-                Debug.Log($"[Match3Game] Waiting for {tilesToMove.Count} LeanTween gravity animations...");
+                var completedAnimations = 0;
+                var totalAnimations = tilesToMove.Count;
+                var animationsCompleted = false;
                 
-                // Wait for gravity duration plus a small buffer
-                yield return new WaitForSeconds(gravityDuration + 0.1f);
+                Debug.Log($"[Match3Game] 🎬 Starting {totalAnimations} gravity animations for column {column}");
                 
-                Debug.Log($"[Match3Game] ✅ All LeanTween gravity animations completed");
+                // Start all animations simultaneously
+                foreach (var (fromY, toY, tile, visual) in tilesToMove)
+                {
+                    Debug.Log($"[Match3Game] 🎬 Starting gravity animation: ({column},{fromY}) -> ({column},{toY})");
+                    
+                    // Update board data immediately
+                    currentBoard = currentBoard.SetTile(column, fromY, new TileData(TileType.Empty, new Vector2Int(column, fromY)));
+                    currentBoard = currentBoard.SetTile(column, toY, tile.WithPosition(new Vector2Int(column, toY)));
+                    
+                    // Update visual references
+                    visualTiles[column, fromY] = null;
+                    visualTiles[column, toY] = visual;
+                    
+                    // Start LeanTween animation with completion tracking
+                    if (visual != null)
+                    {
+                        var targetPos = new Vector3(column * tileSize, toY * tileSize, 0);
+                        
+                        var tween = LeanTween.move(visual, targetPos, gravityDuration);
+                        tween.setEase(LeanTweenType.easeInQuad);
+                        tween.setOnComplete(() => {
+                            completedAnimations++;
+                            Debug.Log($"[Match3Game] ✅ Gravity animation {completedAnimations}/{totalAnimations} completed for column {column}");
+                            
+                            // Check if all animations are done
+                            if (completedAnimations >= totalAnimations && !animationsCompleted)
+                            {
+                                animationsCompleted = true;
+                                Debug.Log($"[Match3Game] 🎯 All {totalAnimations} gravity animations completed for column {column}!");
+                            }
+                        });
+                    }
+                }
+                
+                // Wait for all animations to complete with extra safety buffer
+                yield return new WaitForSeconds(gravityDuration + 0.2f);
+                
+                // Double-check completion
+                if (!animationsCompleted)
+                {
+                    Debug.LogWarning($"[Match3Game] ⚠️ Gravity animations may not have completed for column {column}");
+                }
+                
+                Debug.Log($"[Match3Game] ✅ Batch gravity animations completed for column {column}");
             }
             
             Debug.Log($"[Match3Game] ✅ Gravity applied to column {column}");
         }
         
         /// <summary>
-        /// Refills empty spaces with new random tiles
+        /// Refills empty spaces with new tiles using LeanTween spawn animations
         /// </summary>
         private IEnumerator RefillColumn(int column)
         {
-            Debug.Log($"[Match3Game] 🔄 Refilling column {column}...");
-            int refillCount = 0;
+            Debug.Log($"[Match3Game] 🔄 Refilling column {column} with LeanTween animations...");
             
+            var tilesToSpawn = new List<(int y, TileData tile)>();
+            
+            // # PHASE 1: Calculate all tiles that need to be spawned
             for (int y = currentBoard.Height - 1; y >= 0; y--)
             {
                 var tile = currentBoard.GetTile(column, y);
-                Debug.Log($"[Match3Game] Column {column}, Y {y}: {tile.Type} (Valid: {tile.IsValid})");
                 
                 if (!tile.IsValid)
                 {
-                    // Generate constraint-based tile (avoiding immediate matches)
                     var newTileType = GenerateConstraintTile(column, y);
                     var newTile = new TileData(newTileType, new Vector2Int(column, y));
-                    
-                    Debug.Log($"[Match3Game] Creating new tile at ({column},{y}): {newTileType}");
-                    
-                    currentBoard = currentBoard.SetTile(column, y, newTile);
-                    CreateVisualTile(newTile, column, y);
-                    
-                    refillCount++;
-                    yield return new WaitForSeconds(0.05f); // Small delay for effect
+                    tilesToSpawn.Add((y, newTile));
                 }
             }
             
-            Debug.Log($"[Match3Game] ✅ Column {column} refilled with {refillCount} new tiles");
+            Debug.Log($"[Match3Game] Column {column}: Need to spawn {tilesToSpawn.Count} new tiles");
+            
+            // # PHASE 2: Batch spawn all tiles with LeanTween (DELAYED)
+            if (tilesToSpawn.Count > 0)
+            {
+                var completedSpawns = 0;
+                var totalSpawns = tilesToSpawn.Count;
+                var spawnsCompleted = false;
+                
+                Debug.Log($"[Match3Game] 🎬 Starting DELAYED spawn of {totalSpawns} tiles for column {column}");
+                
+                // Small delay to ensure gravity is completely finished
+                yield return new WaitForSeconds(0.1f);
+                
+                foreach (var (y, tileData) in tilesToSpawn)
+                {
+                    // Update board data
+                    currentBoard = currentBoard.SetTile(column, y, tileData);
+                    
+                    // Create visual tile
+                    var tileObject = tilePool.GetTile();
+                    var tileVisual = tileObject.GetComponent<TileVisual>();
+                    
+                    if (tileVisual != null)
+                    {
+                        tileVisual.SetTileData(tileData);
+                        
+                        // Calculate spawn position (above the board)
+                        var spawnPos = new Vector3(column * tileSize, currentBoard.Height * tileSize, 0);
+                        var targetPos = new Vector3(column * tileSize, y * tileSize, 0);
+                        
+                        // Position tile above board and animate falling
+                        tileObject.transform.position = spawnPos;
+                        tileObject.transform.SetParent(boardParent);
+                        visualTiles[column, y] = tileObject;
+                        
+                        Debug.Log($"[Match3Game] 🎬 DELAYED spawning tile at ({column},{y}): {tileData.Type}");
+                        
+                        // Start LeanTween falling animation
+                        var tween = LeanTween.move(tileObject, targetPos, gravityDuration);
+                        tween.setEase(LeanTweenType.easeInQuad);
+                        tween.setOnComplete(() => {
+                            completedSpawns++;
+                            Debug.Log($"[Match3Game] ✅ DELAYED spawn animation {completedSpawns}/{totalSpawns} completed for column {column}");
+                            
+                            // Check if all spawns are done
+                            if (completedSpawns >= totalSpawns && !spawnsCompleted)
+                            {
+                                spawnsCompleted = true;
+                                Debug.Log($"[Match3Game] 🎯 All {totalSpawns} DELAYED spawn animations completed for column {column}!");
+                            }
+                        });
+                    }
+                }
+                
+                // Wait for all spawn animations to complete
+                yield return new WaitForSeconds(gravityDuration + 0.2f);
+                
+                // Double-check completion
+                if (!spawnsCompleted)
+                {
+                    Debug.LogWarning($"[Match3Game] ⚠️ DELAYED spawn animations may not have completed for column {column}");
+                }
+                
+                Debug.Log($"[Match3Game] ✅ DELAYED batch spawn animations completed for column {column}");
+            }
+            
+            Debug.Log($"[Match3Game] ✅ Column {column} refill completed");
         }
         
         /// <summary>
