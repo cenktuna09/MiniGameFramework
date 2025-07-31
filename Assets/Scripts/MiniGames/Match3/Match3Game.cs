@@ -13,6 +13,8 @@ using MiniGameFramework.MiniGames.Match3.Logic;
 using MiniGameFramework.MiniGames.Match3.Visual;
 using MiniGameFramework.MiniGames.Match3.Utils;
 using MiniGameFramework.MiniGames.Match3.Input;
+using MiniGameFramework.MiniGames.Match3.Config;
+using MiniGameFramework.MiniGames.Match3.ErrorHandling;
 
 namespace MiniGameFramework.MiniGames.Match3
 {
@@ -65,6 +67,11 @@ namespace MiniGameFramework.MiniGames.Match3
         
         // Input system
         private Match3InputManager inputManager;
+        
+        // # Week 3-4: Game Logic and Configuration
+        private Match3GameLogicManager gameLogicManager;
+        private Match3Config gameConfig;
+        private Match3ErrorHandler errorHandler;
         
         // Game state tracking
         private bool isSwapping = false;
@@ -284,45 +291,56 @@ namespace MiniGameFramework.MiniGames.Match3
         /// </summary>
         private void DetectPossibleSwaps()
         {
-            possibleSwaps.Clear();
-            
-            Debug.Log("[Match3Game] 🔍 Starting possible swaps detection...");
-            
-            for (int x = 0; x < currentBoard.Width; x++)
+            // Use game logic manager for swap detection
+            if (gameLogicManager != null)
             {
-                for (int y = 0; y < currentBoard.Height; y++)
+                gameLogicManager.UpdateBoard(currentBoard);
+                possibleSwaps = gameLogicManager.GetPossibleSwaps();
+                inputManager?.UpdatePossibleSwaps(possibleSwaps);
+                
+                Debug.Log($"[Match3Game] 🔍 Found {possibleSwaps.Count} possible swaps (via GameLogicManager)");
+            }
+            else
+            {
+                // Fallback to original implementation
+                possibleSwaps.Clear();
+                
+                Debug.Log("[Match3Game] 🔍 Starting possible swaps detection (fallback)...");
+                
+                for (int x = 0; x < currentBoard.Width; x++)
                 {
-                    var currentTile = currentBoard.GetTile(x, y);
-                    if (!currentTile.IsValid) continue;
-                    
-                    // Check right neighbor
-                    if (x < currentBoard.Width - 1)
+                    for (int y = 0; y < currentBoard.Height; y++)
                     {
-                        var swap = new Swap(new Vector2Int(x, y), new Vector2Int(x + 1, y));
-                        if (WouldSwapCreateMatch(swap))
+                        var currentTile = currentBoard.GetTile(x, y);
+                        if (!currentTile.IsValid) continue;
+                        
+                        // Check right neighbor
+                        if (x < currentBoard.Width - 1)
                         {
-                            possibleSwaps.Add(swap);
-                            Debug.Log($"[Match3Game] ✅ Found valid swap: {swap.tileA} ↔ {swap.tileB}");
+                            var swap = new Swap(new Vector2Int(x, y), new Vector2Int(x + 1, y));
+                            if (WouldSwapCreateMatch(swap))
+                            {
+                                possibleSwaps.Add(swap);
+                                Debug.Log($"[Match3Game] ✅ Found valid swap: {swap.tileA} ↔ {swap.tileB}");
+                            }
                         }
-                    }
-                    
-                    // Check down neighbor  
-                    if (y < currentBoard.Height - 1)
-                    {
-                        var swap = new Swap(new Vector2Int(x, y), new Vector2Int(x, y + 1));
-                        if (WouldSwapCreateMatch(swap))
+                        
+                        // Check down neighbor  
+                        if (y < currentBoard.Height - 1)
                         {
-                            possibleSwaps.Add(swap);
-                            Debug.Log($"[Match3Game] ✅ Found valid swap: {swap.tileA} ↔ {swap.tileB}");
+                            var swap = new Swap(new Vector2Int(x, y), new Vector2Int(x, y + 1));
+                            if (WouldSwapCreateMatch(swap))
+                            {
+                                possibleSwaps.Add(swap);
+                                Debug.Log($"[Match3Game] ✅ Found valid swap: {swap.tileA} ↔ {swap.tileB}");
+                            }
                         }
                     }
                 }
+                
+                Debug.Log($"[Match3Game] 🔍 Found {possibleSwaps.Count} possible swaps (fallback)");
+                inputManager?.UpdatePossibleSwaps(possibleSwaps);
             }
-            
-            Debug.Log($"[Match3Game] 🔍 Found {possibleSwaps.Count} possible swaps");
-            
-            // Update input manager with new possible swaps
-            inputManager?.UpdatePossibleSwaps(possibleSwaps);
         }
         
         /// <summary>
@@ -355,16 +373,23 @@ namespace MiniGameFramework.MiniGames.Match3
         {
             Debug.Log("[Match3Game] 🎲 Generating constraint-based board...");
             
-            // Generate board ensuring no initial matches
-            currentBoard = BoardGenerator.GenerateBoard();
-            
-            // Create visual representation
-            CreateVisualBoard();
-            
-            // Initialize position cache with visual tiles
-            foundationManager?.InitializePositionCache(visualTiles);
-            
-            Debug.Log("[Match3Game] ✅ Constraint-based board generated successfully");
+            // Use error handler for safe execution
+            errorHandler?.SafeExecute(() =>
+            {
+                // Generate board ensuring no initial matches
+                currentBoard = BoardGenerator.GenerateBoard();
+                
+                // Create visual representation
+                CreateVisualBoard();
+                
+                // Initialize position cache with visual tiles
+                foundationManager?.InitializePositionCache(visualTiles);
+                
+                // Initialize game logic manager with new board
+                gameLogicManager?.InitializeBoard(currentBoard);
+                
+                Debug.Log("[Match3Game] ✅ Constraint-based board generated successfully");
+            }, "Board generation");
         }
         
         #endregion
@@ -1031,7 +1056,7 @@ namespace MiniGameFramework.MiniGames.Match3
         #region Private Methods
         
         /// <summary>
-        /// Initializes foundation systems (Week 1-2).
+        /// Initializes foundation systems (Week 1-2) and new components (Week 3-4).
         /// </summary>
         private void InitializeFoundationSystems()
         {
@@ -1052,7 +1077,24 @@ namespace MiniGameFramework.MiniGames.Match3
                 swapDuration
             );
             
-            Debug.Log("[Match3Game] ✅ Foundation systems initialized");
+            // Initialize game logic manager (Week 3-4)
+            gameLogicManager = new Match3GameLogicManager(eventBus);
+            
+            // Initialize configuration (Week 3-4)
+            gameConfig = ScriptableObject.CreateInstance<Match3Config>();
+            gameConfig.boardWidth = 8;
+            gameConfig.boardHeight = 8;
+            gameConfig.tileSize = tileSize;
+            gameConfig.swapDuration = swapDuration;
+            gameConfig.gravityDuration = gravityDuration;
+            gameConfig.pointsPerTile = pointsPerTile;
+            gameConfig.hintDelay = hintDelay;
+            gameConfig.ValidateSettings();
+            
+            // Initialize error handler (Week 3-4)
+            errorHandler = new Match3ErrorHandler(eventBus, true, true, 100);
+            
+            Debug.Log("[Match3Game] ✅ Foundation systems and new components initialized");
         }
         
         /// <summary>
