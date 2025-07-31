@@ -13,8 +13,11 @@ using MiniGameFramework.MiniGames.Match3.Logic;
 using MiniGameFramework.MiniGames.Match3.Visual;
 using MiniGameFramework.MiniGames.Match3.Utils;
 using MiniGameFramework.MiniGames.Match3.Input;
+using MiniGameFramework.MiniGames.Match3.Input.Commands;
 using MiniGameFramework.MiniGames.Match3.Config;
 using MiniGameFramework.MiniGames.Match3.ErrorHandling;
+using MiniGameFramework.MiniGames.Match3.Performance;
+using MiniGameFramework.MiniGames.Match3.Visual.Strategies;
 
 namespace MiniGameFramework.MiniGames.Match3
 {
@@ -72,6 +75,9 @@ namespace MiniGameFramework.MiniGames.Match3
         private Match3GameLogicManager gameLogicManager;
         private Match3Config gameConfig;
         private Match3ErrorHandler errorHandler;
+        
+        // # Week 5-6: Performance Optimization
+        private Match3PerformanceManager performanceManager;
         
         // Game state tracking
         private bool isSwapping = false;
@@ -223,6 +229,10 @@ namespace MiniGameFramework.MiniGames.Match3
         {
             Debug.Log("[Match3Game] Cleaning up resources");
             
+            // Cleanup performance systems (Week 5-6)
+            performanceManager?.StopMonitoring();
+            performanceManager?.Cleanup();
+            
             // Cleanup foundation systems
             if (foundationManager != null)
             {
@@ -250,6 +260,9 @@ namespace MiniGameFramework.MiniGames.Match3
         private void Update()
         {
             if (currentState != GameState.Playing) return;
+            
+            // Update performance monitoring
+            performanceManager?.UpdateMonitoring();
             
             // Handle input
             HandleInput();
@@ -291,9 +304,18 @@ namespace MiniGameFramework.MiniGames.Match3
         /// </summary>
         private void DetectPossibleSwaps()
         {
-            // Use game logic manager for swap detection
-            if (gameLogicManager != null)
+            // Use performance manager for optimized swap detection
+            if (performanceManager != null)
             {
+                performanceManager.UpdateBoardState(currentBoard);
+                possibleSwaps = performanceManager.GetPossibleSwaps(currentBoard);
+                inputManager?.UpdatePossibleSwaps(possibleSwaps);
+                
+                Debug.Log($"[Match3Game] 🔍 Found {possibleSwaps.Count} possible swaps (via PerformanceManager)");
+            }
+            else if (gameLogicManager != null)
+            {
+                // Fallback to game logic manager
                 gameLogicManager.UpdateBoard(currentBoard);
                 possibleSwaps = gameLogicManager.GetPossibleSwaps();
                 inputManager?.UpdatePossibleSwaps(possibleSwaps);
@@ -348,7 +370,13 @@ namespace MiniGameFramework.MiniGames.Match3
         /// </summary>
         private bool WouldSwapCreateMatch(Swap swap)
         {
-            // Simulate the swap
+            // Use performance manager for optimized validation
+            if (performanceManager != null)
+            {
+                return performanceManager.IsSwapValid(swap);
+            }
+            
+            // Fallback to original implementation
             var tileA = currentBoard.GetTile(swap.tileA);
             var tileB = currentBoard.GetTile(swap.tileB);
             
@@ -568,7 +596,7 @@ namespace MiniGameFramework.MiniGames.Match3
         /// </summary>
         private IEnumerator AnimateSwapWithLeanTween(Swap swap)
         {
-            Debug.Log($"[Match3Game] 🎬 Starting LeanTween swap animation: {swap.tileA} ↔ {swap.tileB}");
+            Debug.Log($"[Match3Game] 🎬 Starting optimized swap animation: {swap.tileA} ↔ {swap.tileB}");
             
             var visualA = visualTiles[swap.tileA.x, swap.tileA.y];
             var visualB = visualTiles[swap.tileB.x, swap.tileB.y];
@@ -579,40 +607,54 @@ namespace MiniGameFramework.MiniGames.Match3
                 yield break;
             }
             
-            // Store references for completion callback
-            var tileACopy = visualA;
-            var tileBCopy = visualB;
-            
             // Calculate target positions
             var posA = new Vector3(swap.tileB.x * tileSize, swap.tileB.y * tileSize, 0);
             var posB = new Vector3(swap.tileA.x * tileSize, swap.tileA.y * tileSize, 0);
             
             Debug.Log($"[Match3Game] 🎯 Moving A to {posA}, B to {posB}");
             
-            // Bring animated tile to front
-            var spriteRendererA = visualA.GetComponent<SpriteRenderer>();
-            if (spriteRendererA != null)
-            {
-                spriteRendererA.sortingOrder = 1;
-            }
-            
             // Get animation duration from config
             var duration = gameConfig?.swapDuration ?? swapDuration;
             
-            // Start LeanTween animations
-            LeanTween.move(visualA, posA, duration)
-                .setOnComplete(() => {
-                    Debug.Log("[Match3Game] ✅ Tile A animation completed");
-                    if (spriteRendererA != null)
-                    {
-                        spriteRendererA.sortingOrder = 0;
-                    }
+            // Use performance manager for optimized animation
+            if (performanceManager != null)
+            {
+                var animationCompleted = false;
+                performanceManager.AnimateSwap(visualA, visualB, posA, posB, duration, () =>
+                {
+                    animationCompleted = true;
                 });
-            
-            LeanTween.move(visualB, posB, duration);
-            
-            // Wait for animations to complete
-            yield return new WaitForSeconds(duration);
+                
+                // Wait for animation to complete
+                while (!animationCompleted)
+                {
+                    yield return null;
+                }
+            }
+            else
+            {
+                // Fallback to original LeanTween implementation
+                var spriteRendererA = visualA.GetComponent<SpriteRenderer>();
+                if (spriteRendererA != null)
+                {
+                    spriteRendererA.sortingOrder = 1;
+                }
+                
+                // Start LeanTween animations
+                LeanTween.move(visualA, posA, duration)
+                    .setOnComplete(() => {
+                        Debug.Log("[Match3Game] ✅ Tile A animation completed");
+                        if (spriteRendererA != null)
+                        {
+                            spriteRendererA.sortingOrder = 0;
+                        }
+                    });
+                
+                LeanTween.move(visualB, posB, duration);
+                
+                // Wait for animations to complete
+                yield return new WaitForSeconds(duration);
+            }
             
             // Swap visual references AFTER animation
             visualTiles[swap.tileA.x, swap.tileA.y] = visualB;
@@ -628,7 +670,7 @@ namespace MiniGameFramework.MiniGames.Match3
                 foundationManager?.UpdateTilePosition(visualB, swap.tileA);
             }
             
-            Debug.Log("[Match3Game] ✅ LeanTween swap animation completed");
+            Debug.Log("[Match3Game] ✅ Optimized swap animation completed");
         }
         
         /// <summary>
@@ -1110,6 +1152,19 @@ namespace MiniGameFramework.MiniGames.Match3
                 Debug.Log($"[Match3Game] Row {y}: {row}");
             }
         }
+        
+        [ContextMenu("Show Performance Stats")]
+        public void ShowPerformanceStats()
+        {
+            if (performanceManager != null)
+            {
+                Debug.Log(performanceManager.GetPerformanceStats());
+            }
+            else
+            {
+                Debug.LogWarning("[Match3Game] ⚠️ Performance manager not available");
+            }
+        }
 
         #region Private Methods
         
@@ -1154,6 +1209,22 @@ namespace MiniGameFramework.MiniGames.Match3
             
             // Initialize error handler (Week 3-4)
             errorHandler = new Match3ErrorHandler(eventBus, true, true, 100);
+            
+            // Initialize performance manager (Week 5-6)
+            performanceManager = new Match3PerformanceManager(eventBus);
+            performanceManager.Initialize();
+            performanceManager.StartMonitoring();
+            
+            // Subscribe to performance events
+            performanceManager.OnPerformanceWarning += (warning) => 
+            {
+                Debug.LogWarning($"[Match3Game] ⚠️ Performance warning: {warning}");
+            };
+            
+            performanceManager.OnPerformanceAlert += (alert) => 
+            {
+                Debug.LogError($"[Match3Game] ❌ Performance alert: {alert}");
+            };
             
             // Subscribe to game logic manager events
             if (gameLogicManager != null)
