@@ -11,6 +11,8 @@ using MiniGameFramework.MiniGames.Match3.Board;
 using MiniGameFramework.MiniGames.Match3.Pooling;
 using MiniGameFramework.MiniGames.Match3.Logic;
 using MiniGameFramework.MiniGames.Match3.Visual;
+using MiniGameFramework.MiniGames.Match3.Utils;
+using MiniGameFramework.MiniGames.Match3.Input;
 
 namespace MiniGameFramework.MiniGames.Match3
 {
@@ -58,18 +60,19 @@ namespace MiniGameFramework.MiniGames.Match3
         private IEventBus eventBus;
         private int currentScore = 0;
         
-        // # Game Flow Control
+        // # Foundation Systems (Week 1-2)
+        private Match3FoundationManager foundationManager;
+        
+        // Input system
+        private Match3InputManager inputManager;
+        
+        // Game state tracking
         private bool isSwapping = false;
         private bool isProcessingMatches = false;
-        private bool inputLocked = false;
         
-        // # Possible Swaps System
+        // Game state tracking
         private List<Swap> possibleSwaps = new List<Swap>();
         private Coroutine hintCoroutine;
-        
-        // # Input System
-        private GameObject selectedTile = null;
-        private bool isDragging = false;
         
 
         
@@ -115,7 +118,10 @@ namespace MiniGameFramework.MiniGames.Match3
                     throw new InvalidOperationException("EventBus is required for Match3Game");
                 }
                 
-                // # 2. Initialize Components  
+                // # 2. Initialize Foundation Systems (Week 1-2)
+                InitializeFoundationSystems();
+                
+                // # 3. Initialize Components  
                 await InitializeComponents();
                 
                 // # 3. Generate Constraint-Based Board
@@ -131,7 +137,7 @@ namespace MiniGameFramework.MiniGames.Match3
                 Debug.Log($"[Match3Game] Current state after init: {currentState}");
                 if (currentState == GameState.Ready)
                 {
-                    Debug.Log("[Match3Game] 🚀 Auto-starting game...");
+                    Debug.Log("[Match3Game] �� Auto-starting game...");
                     SetState(GameState.Playing);
                     OnStart();
                     Debug.Log($"[Match3Game] State after auto-start: {currentState}");
@@ -150,49 +156,80 @@ namespace MiniGameFramework.MiniGames.Match3
         
         protected override void OnStart()
         {
-            Debug.Log("[Match3Game] 🎮 Game Started!");
-            inputLocked = false;
+            Debug.Log("[Match3Game] 🚀 Starting Match3 game...");
+            
+            // Initialize game state
+            currentScore = 0;
+            
+            // Unlock input
+            inputManager?.UnlockInput();
+            
+            // Start hint timer
             StartHintTimer();
+            
+            Debug.Log("[Match3Game] ✅ Game started successfully");
         }
         
         protected override void OnPause()
         {
-            Debug.Log("[Match3Game] ⏸️ Game Paused");
-            inputLocked = true;
+            Debug.Log("[Match3Game] ⏸️ Pausing Match3 game...");
+            
+            // Lock input
+            inputManager?.LockInput();
+            
+            // Stop hint timer
             StopHintTimer();
+            
+            Debug.Log("[Match3Game] ✅ Game paused");
         }
         
         protected override void OnResume()
         {
-            Debug.Log("[Match3Game] ▶️ Game Resumed");
-            inputLocked = false;
-            StartHintTimer();
+            Debug.Log("[Match3Game] ▶️ Resuming Match3 game...");
+            
+            // Unlock input
+            inputManager?.UnlockInput();
+            
+            // Restart hint timer
+            RestartHintTimer();
+            
+            Debug.Log("[Match3Game] ✅ Game resumed");
         }
         
         protected override void OnEnd()
         {
-            Debug.Log($"[Match3Game] 🏁 Game Ended! Final Score: {currentScore}");
-            inputLocked = true;
+            Debug.Log("[Match3Game] 🏁 Ending Match3 game...");
+            
+            // Lock input
+            inputManager?.LockInput();
+            
+            // Stop hint timer
             StopHintTimer();
             
-            // Publish game over event
-            eventBus?.Publish(new GameStateChangedEvent(gameId, GameState.Playing, GameState.GameOver, this));
+            // Force deselect any selected tile
+            inputManager?.ForceDeselect();
+            
+            Debug.Log("[Match3Game] ✅ Game ended");
         }
         
         protected override void OnCleanup()
         {
             Debug.Log("[Match3Game] Cleaning up resources");
             
-            // Return all tiles to pool
-            if (tilePool != null)
+            // Cleanup foundation systems
+            if (foundationManager != null)
             {
-                tilePool.ReturnAllTiles();
+                foundationManager.CleanupAll(this);
+                foundationManager.LogMemoryStats();
             }
             
-            selectedTile = null;
-            isDragging = false;
-            inputLocked = true;
-            currentScore = 0;
+            // Stop hint timer
+            StopHintTimer();
+            
+            // Clear visual board
+            ClearVisualBoard();
+            
+            Debug.Log("[Match3Game] ✅ Cleanup completed");
         }
         
         public override int GetCurrentScore()
@@ -205,135 +242,41 @@ namespace MiniGameFramework.MiniGames.Match3
         /// </summary>
         private void Update()
         {
-            if (currentState == GameState.Playing && !inputLocked)
-            {
-                HandleInput();
-            }
+            if (currentState != GameState.Playing) return;
+            
+            // Handle input
+            HandleInput();
         }
 
         /// <summary>
-        /// Clean input handling with LeanTween animations for tile selection and swapping
+        /// Handles input using the new input manager system.
         /// </summary>
         private void HandleInput()
         {
-            if (isProcessingMatches || isSwapping) return;
+            if (inputManager == null) return;
             
-            // # Mouse Down - Select Tile
-            if (UnityEngine.Input.GetMouseButtonDown(0))
+            var inputResult = inputManager.ProcessInput(isProcessingMatches, isSwapping);
+            
+            // Handle tile selection
+            if (inputResult.TileSelected)
             {
-                var worldPos = Camera.main.ScreenToWorldPoint(UnityEngine.Input.mousePosition);
-                var hit = Physics2D.Raycast(worldPos, Vector2.zero);
-                
-                if (hit.collider?.CompareTag("Tile") == true)
-                {
-                    SelectTile(hit.collider.gameObject);
-                    isDragging = true;
-                    RestartHintTimer(); // Reset hint timer on player activity
-                }
+                RestartHintTimer(); // Reset hint timer on player activity
             }
             
-            // # Mouse Up - End Selection
-            if (UnityEngine.Input.GetMouseButtonUp(0))
+            // Handle valid swap
+            if (inputResult.SwapDetected && inputResult.IsValidSwap)
             {
-                isDragging = false;
-                DeselectTile();
+                StartCoroutine(ProcessSwapWithLeanTween(inputResult.DetectedSwap));
             }
             
-            // # Drag Detection - Attempt Swap with LeanTween
-            if (isDragging && selectedTile != null)
+            // Handle invalid swap
+            if (inputResult.SwapDetected && !inputResult.IsValidSwap && inputResult.InvalidSwapTiles.HasValue)
             {
-                var worldPos = Camera.main.ScreenToWorldPoint(UnityEngine.Input.mousePosition);
-                var hit = Physics2D.Raycast(worldPos, Vector2.zero);
-                
-                if (hit.collider?.CompareTag("Tile") == true && hit.collider.gameObject != selectedTile)
-                {
-                    var targetTile = hit.collider.gameObject;
-                    var swap = new Swap(GetTileBoardPosition(selectedTile), GetTileBoardPosition(targetTile));
-                    
-                    // Check if this is a valid swap
-                    if (IsValidSwap(swap))
-                    {
-                        StartCoroutine(ProcessSwapWithLeanTween(swap));
-                        DeselectTile();
-                        isDragging = false;
-                    }
-                    else
-                    {
-                        // Invalid move - show error animation
-                        ShowInvalidMoveAnimation(selectedTile, targetTile);
-                        DeselectTile();
-                        isDragging = false;
-                    }
-                }
+                var invalidTiles = inputResult.InvalidSwapTiles.Value;
+                ShowInvalidMoveAnimation(invalidTiles.tileA, invalidTiles.tileB);
             }
         }
 
-        #region Input Handling Helpers
-        
-        /// <summary>
-        /// Selects a tile with visual feedback
-        /// </summary>
-        private void SelectTile(GameObject tile)
-        {
-            selectedTile = tile;
-            var spriteRenderer = tile.GetComponent<SpriteRenderer>();
-            if (spriteRenderer != null)
-            {
-                spriteRenderer.color = Color.yellow; // Highlight selected tile
-            }
-        }
-        
-        /// <summary>
-        /// Deselects current tile and removes visual feedback
-        /// </summary>
-        private void DeselectTile()
-        {
-            if (selectedTile != null)
-            {
-                var spriteRenderer = selectedTile.GetComponent<SpriteRenderer>();
-                if (spriteRenderer != null)
-                {
-                    spriteRenderer.color = Color.white; // Reset color
-                }
-                selectedTile = null;
-            }
-        }
-        
-        /// <summary>
-        /// Gets the board position of a visual tile
-        /// </summary>
-        private Vector2Int GetTileBoardPosition(GameObject tile)
-        {
-            for (int x = 0; x < currentBoard.Width; x++)
-            {
-                for (int y = 0; y < currentBoard.Height; y++)
-                {
-                    if (visualTiles[x, y] == tile)
-                        return new Vector2Int(x, y);
-                }
-            }
-            return Vector2Int.zero;
-        }
-        
-        /// <summary>
-        /// Checks if a swap is valid (adjacent tiles that would create matches)
-        /// </summary>
-        private bool IsValidSwap(Swap swap)
-        {
-            // Check if tiles are adjacent
-            int deltaX = Mathf.Abs(swap.tileA.x - swap.tileB.x);
-            int deltaY = Mathf.Abs(swap.tileA.y - swap.tileB.y);
-            bool isAdjacent = (deltaX == 1 && deltaY == 0) || (deltaX == 0 && deltaY == 1);
-            
-            if (!isAdjacent) return false;
-            
-            // Check if swap exists in possible swaps list
-            return possibleSwaps.Contains(swap) || 
-                   possibleSwaps.Contains(new Swap(swap.tileB, swap.tileA));
-        }
-        
-        #endregion
-        
         #region Core Game Systems
         
         /// <summary>
@@ -342,6 +285,8 @@ namespace MiniGameFramework.MiniGames.Match3
         private void DetectPossibleSwaps()
         {
             possibleSwaps.Clear();
+            
+            Debug.Log("[Match3Game] 🔍 Starting possible swaps detection...");
             
             for (int x = 0; x < currentBoard.Width; x++)
             {
@@ -357,6 +302,7 @@ namespace MiniGameFramework.MiniGames.Match3
                         if (WouldSwapCreateMatch(swap))
                         {
                             possibleSwaps.Add(swap);
+                            Debug.Log($"[Match3Game] ✅ Found valid swap: {swap.tileA} ↔ {swap.tileB}");
                         }
                     }
                     
@@ -367,12 +313,16 @@ namespace MiniGameFramework.MiniGames.Match3
                         if (WouldSwapCreateMatch(swap))
                         {
                             possibleSwaps.Add(swap);
+                            Debug.Log($"[Match3Game] ✅ Found valid swap: {swap.tileA} ↔ {swap.tileB}");
                         }
                     }
                 }
             }
             
             Debug.Log($"[Match3Game] 🔍 Found {possibleSwaps.Count} possible swaps");
+            
+            // Update input manager with new possible swaps
+            inputManager?.UpdatePossibleSwaps(possibleSwaps);
         }
         
         /// <summary>
@@ -388,7 +338,14 @@ namespace MiniGameFramework.MiniGames.Match3
                 .SetTile(swap.tileA, tileB.WithPosition(swap.tileA))
                 .SetTile(swap.tileB, tileA.WithPosition(swap.tileB));
             
-            return MatchDetector.FindMatches(simulatedBoard).Count > 0;
+            var matches = MatchDetector.FindMatches(simulatedBoard);
+            bool wouldCreateMatch = matches.Count > 0;
+            
+            Debug.Log($"[Match3Game] 🔍 Testing swap {swap.tileA} ↔ {swap.tileB}: " +
+                     $"TileA={tileA.Type}, TileB={tileB.Type}, " +
+                     $"WouldCreateMatch={wouldCreateMatch}, MatchesFound={matches.Count}");
+            
+            return wouldCreateMatch;
         }
         
         /// <summary>
@@ -403,6 +360,9 @@ namespace MiniGameFramework.MiniGames.Match3
             
             // Create visual representation
             CreateVisualBoard();
+            
+            // Initialize position cache with visual tiles
+            foundationManager?.InitializePositionCache(visualTiles);
             
             Debug.Log("[Match3Game] ✅ Constraint-based board generated successfully");
         }
@@ -627,6 +587,16 @@ namespace MiniGameFramework.MiniGames.Match3
             // Swap visual references AFTER animation
             visualTiles[swap.tileA.x, swap.tileA.y] = visualB;
             visualTiles[swap.tileB.x, swap.tileB.y] = visualA;
+            
+            // Update position cache
+            if (visualA != null)
+            {
+                foundationManager?.UpdateTilePosition(visualA, swap.tileB);
+            }
+            if (visualB != null)
+            {
+                foundationManager?.UpdateTilePosition(visualB, swap.tileA);
+            }
             
             Debug.Log("[Match3Game] ✅ LeanTween swap animation completed");
         }
@@ -1061,6 +1031,31 @@ namespace MiniGameFramework.MiniGames.Match3
         #region Private Methods
         
         /// <summary>
+        /// Initializes foundation systems (Week 1-2).
+        /// </summary>
+        private void InitializeFoundationSystems()
+        {
+            Debug.Log("[Match3Game] 🔧 Initializing foundation systems...");
+            foundationManager = new Match3FoundationManager(
+                eventBus,
+                tileSize,
+                swapDuration,
+                gravityDuration,
+                matchAnimationDuration
+            );
+            
+            // Initialize input manager
+            inputManager = new Match3InputManager(
+                eventBus,
+                foundationManager,
+                tileSize,
+                swapDuration
+            );
+            
+            Debug.Log("[Match3Game] ✅ Foundation systems initialized");
+        }
+        
+        /// <summary>
         /// Initializes all required components
         /// </summary>
         private async Task InitializeComponents()
@@ -1341,6 +1336,12 @@ namespace MiniGameFramework.MiniGames.Match3
                     visualTiles[column, fromY] = null;
                     visualTiles[column, toY] = visual;
                     
+                    // Update position cache
+                    if (visual != null)
+                    {
+                        foundationManager?.UpdateTilePosition(visual, new Vector2Int(column, toY));
+                    }
+                    
                     // Start LeanTween animation with completion tracking
                     if (visual != null)
                     {
@@ -1434,6 +1435,9 @@ namespace MiniGameFramework.MiniGames.Match3
                         tileObject.transform.position = spawnPos;
                         tileObject.transform.SetParent(boardParent);
                         visualTiles[column, y] = tileObject;
+                        
+                        // Update position cache
+                        foundationManager?.UpdateTilePosition(tileObject, new Vector2Int(column, y));
                         
                         Debug.Log($"[Match3Game] 🎬 DELAYED spawning tile at ({column},{y}): {tileData.Type}");
                         

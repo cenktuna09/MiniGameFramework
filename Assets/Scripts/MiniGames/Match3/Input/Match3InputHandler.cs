@@ -1,244 +1,327 @@
-using System;
+using System.Collections;
 using UnityEngine;
 using MiniGameFramework.Core.Architecture;
-using MiniGameFramework.Core.Input;
 using MiniGameFramework.MiniGames.Match3.Data;
+using MiniGameFramework.MiniGames.Match3.Utils;
+using System.Collections.Generic;
+using System.Linq; // Added for .Any()
 
 namespace MiniGameFramework.MiniGames.Match3.Input
 {
     /// <summary>
-    /// Handles input processing for Match3 game including swipe detection and tile selection.
-    /// Uses EventBus for decoupled communication.
+    /// Handles all input logic for Match3 game.
+    /// Extracted from Match3Game to follow separation of concerns.
     /// </summary>
-    public class Match3InputHandler : MonoBehaviour
+    public class Match3InputHandler
     {
-        [Header("Input Configuration")]
-        [SerializeField] private float minSwipeDistance = 50f;
-        [SerializeField] private float maxSwipeTime = 0.5f;
-        [SerializeField] private Camera gameCamera;
-        [SerializeField] private LayerMask tileLayerMask = -1;
+        private readonly IEventBus eventBus;
+        private readonly Match3FoundationManager foundationManager;
         
-        private IEventBus eventBus;
-        private Vector2 swipeStartPosition;
-        private float swipeStartTime;
-        private bool isSwipeStarted = false;
-        private Vector2Int? selectedTilePosition;
+        // Input state
+        private GameObject selectedTile = null;
+        private bool isDragging = false;
+        private bool inputLocked = false;
         
-        /// <summary>
-        /// Currently selected tile position (if any).
-        /// </summary>
-        public Vector2Int? SelectedTilePosition => selectedTilePosition;
+        // Configuration
+        private readonly float tileSize;
+        private readonly float swapDuration;
         
-        /// <summary>
-        /// Whether a tile is currently selected.
-        /// </summary>
-        public bool HasSelectedTile => selectedTilePosition.HasValue;
+        // Game state for validation
+        private List<Swap> possibleSwaps = new List<Swap>();
         
-        private void Awake()
+        public Match3InputHandler(
+            IEventBus eventBus, 
+            Match3FoundationManager foundationManager,
+            float tileSize, 
+            float swapDuration)
         {
-            if (gameCamera == null)
-                gameCamera = Camera.main;
+            this.eventBus = eventBus;
+            this.foundationManager = foundationManager;
+            this.tileSize = tileSize;
+            this.swapDuration = swapDuration;
+            
+            Debug.Log("[Match3InputHandler] ✅ Input handler initialized");
         }
         
         /// <summary>
-        /// Initializes the input handler with the event bus.
+        /// Updates the possible swaps list for validation.
         /// </summary>
-        /// <param name="eventBus">Event bus for communication.</param>
-        public void Initialize(IEventBus eventBus)
+        /// <param name="swaps">The list of valid swaps.</param>
+        public void UpdatePossibleSwaps(List<Swap> swaps)
         {
-            this.eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
-            
-            // Subscribe to input events
-            eventBus.Subscribe<TileClickInputEvent>(OnTileClick);
-            eventBus.Subscribe<SwipeInputEvent>(OnSwipeInput);
-            
-            Debug.Log("[Match3InputHandler] Initialized and subscribed to input events");
+            possibleSwaps = swaps ?? new List<Swap>();
+            Debug.Log($"[Match3InputHandler] 📋 Updated possible swaps: {possibleSwaps.Count} valid swaps");
         }
         
         /// <summary>
-        /// Cleans up event subscriptions.
+        /// Processes input for the current frame.
         /// </summary>
-        public void Cleanup()
+        /// <param name="isProcessingMatches">Whether matches are being processed.</param>
+        /// <param name="isSwapping">Whether a swap is in progress.</param>
+        /// <returns>Input result containing any detected actions.</returns>
+        public InputResult ProcessInput(bool isProcessingMatches, bool isSwapping)
         {
-            if (eventBus != null)
+            if (inputLocked || isProcessingMatches || isSwapping)
             {
-                eventBus.Unsubscribe<TileClickInputEvent>(OnTileClick);
-                eventBus.Unsubscribe<SwipeInputEvent>(OnSwipeInput);
+                return InputResult.None();
             }
             
-            selectedTilePosition = null;
+            var result = new InputResult();
+            
+            // Mouse Down - Select Tile
+            if (UnityEngine.Input.GetMouseButtonDown(0))
+            {
+                var worldPos = Camera.main.ScreenToWorldPoint(UnityEngine.Input.mousePosition);
+                var hit = Physics2D.Raycast(worldPos, Vector2.zero);
+                
+                if (hit.collider?.CompareTag("Tile") == true)
+                {
+                    SelectTile(hit.collider.gameObject);
+                    isDragging = true;
+                    result.TileSelected = true;
+                    result.SelectedTile = hit.collider.gameObject;
+                    
+                    Debug.Log($"[Match3InputHandler] 🎯 Tile selected: {hit.collider.gameObject.name}");
+                }
+            }
+            
+            // Mouse Up - End Selection
+            if (UnityEngine.Input.GetMouseButtonUp(0))
+            {
+                isDragging = false;
+                DeselectTile();
+                result.TileDeselected = true;
+            }
+            
+            // Drag Detection - Attempt Swap
+            if (isDragging && selectedTile != null)
+            {
+                var worldPos = Camera.main.ScreenToWorldPoint(UnityEngine.Input.mousePosition);
+                var hit = Physics2D.Raycast(worldPos, Vector2.zero);
+                
+                if (hit.collider?.CompareTag("Tile") == true && hit.collider.gameObject != selectedTile)
+                {
+                    var targetTile = hit.collider.gameObject;
+                    var swap = CreateSwapFromTiles(selectedTile, targetTile);
+                    
+                    Debug.Log($"[Match3InputHandler] 🎯 Attempting swap: {swap.tileA} ↔ {swap.tileB}");
+                    
+                    if (IsValidSwap(swap))
+                    {
+                        result.SwapDetected = true;
+                        result.DetectedSwap = swap;
+                        result.IsValidSwap = true;
+                        
+                        Debug.Log($"[Match3InputHandler] ✅ Valid swap detected!");
+                    }
+                    else
+                    {
+                        result.SwapDetected = true;
+                        result.DetectedSwap = swap;
+                        result.IsValidSwap = false;
+                        result.InvalidSwapTiles = (selectedTile, targetTile);
+                        
+                        Debug.Log($"[Match3InputHandler] ❌ Invalid swap detected!");
+                    }
+                    
+                    // Reset drag state
+                    isDragging = false;
+                    DeselectTile();
+                }
+            }
+            
+            return result;
         }
         
         /// <summary>
-        /// Handles tile click/tap input.
+        /// Creates a swap from two tile GameObjects.
         /// </summary>
-        private void OnTileClick(TileClickInputEvent clickEvent)
+        /// <param name="tileA">First tile.</param>
+        /// <param name="tileB">Second tile.</param>
+        /// <returns>The swap.</returns>
+        private Swap CreateSwapFromTiles(GameObject tileA, GameObject tileB)
         {
-            var boardPosition = WorldPositionToBoardPosition(clickEvent.WorldPosition);
+            var posA = GetTileBoardPosition(tileA);
+            var posB = GetTileBoardPosition(tileB);
             
-            if (!IsValidBoardPosition(boardPosition))
-                return;
+            Debug.Log($"[Match3InputHandler] 📍 Tile A position: {posA}");
+            Debug.Log($"[Match3InputHandler] 📍 Tile B position: {posB}");
             
-            if (HasSelectedTile)
+            return new Swap(posA, posB);
+        }
+        
+        /// <summary>
+        /// Gets the board position of a tile using foundation manager.
+        /// </summary>
+        /// <param name="tile">The tile GameObject.</param>
+        /// <returns>The board position.</returns>
+        private Vector2Int GetTileBoardPosition(GameObject tile)
+        {
+            if (foundationManager != null)
             {
-                // If clicking the same tile, deselect it
-                if (selectedTilePosition == boardPosition)
+                var position = foundationManager.GetTilePosition(tile);
+                if (position != Vector2Int.zero)
                 {
-                    DeselectTile();
-                    return;
-                }
-                
-                // Check if clicked tile is adjacent to selected tile
-                if (IsAdjacent(selectedTilePosition.Value, boardPosition))
-                {
-                    // Perform swap
-                    PerformTileSwap(selectedTilePosition.Value, boardPosition);
-                    DeselectTile();
+                    Debug.Log($"[Match3InputHandler] 📍 Cache hit for {tile?.name}: {position}");
+                    return position;
                 }
                 else
                 {
-                    // Select new tile
-                    SelectTile(boardPosition);
+                    Debug.LogWarning($"[Match3InputHandler] ⚠️ Position cache miss for {tile?.name}, foundation manager returned zero");
                 }
             }
             else
             {
-                // Select tile
-                SelectTile(boardPosition);
+                Debug.LogWarning($"[Match3InputHandler] ⚠️ Foundation manager is null for {tile?.name}");
+            }
+            
+            // Fallback: Search in visual tiles array
+            Debug.LogWarning($"[Match3InputHandler] ⚠️ Position cache miss for {tile?.name}, performing fallback search...");
+            
+            // This is a temporary fallback - in a real implementation, we'd have access to visualTiles
+            // For now, we'll try to extract position from the tile's transform
+            if (tile != null)
+            {
+                var worldPos = tile.transform.position;
+                var boardPos = new Vector2Int(
+                    Mathf.RoundToInt(worldPos.x / tileSize),
+                    Mathf.RoundToInt(worldPos.y / tileSize)
+                );
+                
+                Debug.Log($"[Match3InputHandler] 📍 Fallback position for {tile.name}: " +
+                         $"WorldPos={worldPos}, TileSize={tileSize}, BoardPos={boardPos}");
+                return boardPos;
+            }
+            
+            Debug.LogError($"[Match3InputHandler] ❌ Tile is null, returning zero position");
+            return Vector2Int.zero;
+        }
+        
+        /// <summary>
+        /// Checks if a swap is valid (adjacent tiles that would create matches).
+        /// </summary>
+        /// <param name="swap">The swap to validate.</param>
+        /// <returns>True if the swap is valid.</returns>
+        private bool IsValidSwap(Swap swap)
+        {
+            // Check if tiles are adjacent
+            int deltaX = Mathf.Abs(swap.tileA.x - swap.tileB.x);
+            int deltaY = Mathf.Abs(swap.tileA.y - swap.tileB.y);
+            bool isAdjacent = (deltaX == 1 && deltaY == 0) || (deltaX == 0 && deltaY == 1);
+            
+            Debug.Log($"[Match3InputHandler] 🔍 Validating swap: {swap.tileA} ↔ {swap.tileB}");
+            Debug.Log($"[Match3InputHandler] 📏 Adjacent check: {isAdjacent} (deltaX={deltaX}, deltaY={deltaY})");
+            
+            if (!isAdjacent)
+            {
+                Debug.Log($"[Match3InputHandler] ❌ Swap rejected: Not adjacent");
+                return false;
+            }
+            
+            // Check if this swap is in the possible swaps list
+            bool isValidSwap = possibleSwaps.Any(s => 
+                (s.tileA == swap.tileA && s.tileB == swap.tileB) ||
+                (s.tileA == swap.tileB && s.tileB == swap.tileA)
+            );
+            
+            Debug.Log($"[Match3InputHandler] 📋 Possible swaps check: {isValidSwap} (found in {possibleSwaps.Count} valid swaps)");
+            
+            if (!isValidSwap)
+            {
+                Debug.Log($"[Match3InputHandler] ❌ Swap rejected: Not in possible swaps list");
+                return false;
+            }
+            
+            Debug.Log($"[Match3InputHandler] ✅ Swap accepted: Valid match-creating swap");
+            return true;
+        }
+        
+        /// <summary>
+        /// Selects a tile with visual feedback.
+        /// </summary>
+        /// <param name="tile">The tile to select.</param>
+        private void SelectTile(GameObject tile)
+        {
+            selectedTile = tile;
+            var spriteRenderer = tile.GetComponent<SpriteRenderer>();
+            if (spriteRenderer != null)
+            {
+                spriteRenderer.color = Color.yellow; // Highlight selected tile
             }
         }
         
         /// <summary>
-        /// Handles swipe input for tile swapping.
-        /// </summary>
-        private void OnSwipeInput(SwipeInputEvent swipeEvent)
-        {
-            if (swipeEvent.Distance < minSwipeDistance)
-                return;
-            
-            var startBoardPos = WorldPositionToBoardPosition(swipeEvent.StartPosition);
-            var swipeDirection = GetSwipeDirection(swipeEvent.Direction);
-            var endBoardPos = startBoardPos + swipeDirection;
-            
-            if (!IsValidBoardPosition(startBoardPos) || !IsValidBoardPosition(endBoardPos))
-                return;
-            
-            // Perform swap based on swipe
-            PerformTileSwap(startBoardPos, endBoardPos);
-        }
-        
-        /// <summary>
-        /// Selects a tile at the specified board position.
-        /// </summary>
-        /// <param name="boardPosition">Board position to select.</param>
-        private void SelectTile(Vector2Int boardPosition)
-        {
-            selectedTilePosition = boardPosition;
-            
-            // Publish tile selection event
-            eventBus?.Publish(new TileSelectedEvent(boardPosition, TileType.Empty)); // TileType will be filled by board manager
-            
-            Debug.Log($"[Match3InputHandler] Selected tile at {boardPosition}");
-        }
-        
-        /// <summary>
-        /// Deselects the currently selected tile.
+        /// Deselects current tile and removes visual feedback.
         /// </summary>
         private void DeselectTile()
         {
-            selectedTilePosition = null;
-            Debug.Log("[Match3InputHandler] Deselected tile");
-        }
-        
-        /// <summary>
-        /// Performs a tile swap between two positions.
-        /// </summary>
-        /// <param name="fromPosition">Source position.</param>
-        /// <param name="toPosition">Target position.</param>
-        private void PerformTileSwap(Vector2Int fromPosition, Vector2Int toPosition)
-        {
-            // Publish tile swap event
-            eventBus?.Publish(new TilesSwappedEvent(fromPosition, toPosition, true));
-            
-            Debug.Log($"[Match3InputHandler] Performed swap: {fromPosition} -> {toPosition}");
-        }
-        
-        /// <summary>
-        /// Converts world position to board position.
-        /// </summary>
-        /// <param name="worldPosition">World position.</param>
-        /// <returns>Board position.</returns>
-        private Vector2Int WorldPositionToBoardPosition(Vector2 worldPosition)
-        {
-            // This will need to be adjusted based on your board layout
-            // For now, assuming 1 unit = 1 tile and board starts at (0,0)
-            var x = Mathf.FloorToInt(worldPosition.x);
-            var y = Mathf.FloorToInt(worldPosition.y);
-            
-            return new Vector2Int(x, y);
-        }
-        
-        /// <summary>
-        /// Converts board position to world position.
-        /// </summary>
-        /// <param name="boardPosition">Board position.</param>
-        /// <returns>World position.</returns>
-        public Vector3 BoardPositionToWorldPosition(Vector2Int boardPosition)
-        {
-            // This will need to be adjusted based on your board layout
-            return new Vector3(boardPosition.x, boardPosition.y, 0);
-        }
-        
-        /// <summary>
-        /// Checks if a board position is valid.
-        /// </summary>
-        /// <param name="position">Position to check.</param>
-        /// <returns>True if position is valid.</returns>
-        private bool IsValidBoardPosition(Vector2Int position)
-        {
-            return position.x >= 0 && position.x < BoardData.BOARD_SIZE &&
-                   position.y >= 0 && position.y < BoardData.BOARD_SIZE;
-        }
-        
-        /// <summary>
-        /// Checks if two board positions are adjacent.
-        /// </summary>
-        /// <param name="pos1">First position.</param>
-        /// <param name="pos2">Second position.</param>
-        /// <returns>True if positions are adjacent.</returns>
-        private bool IsAdjacent(Vector2Int pos1, Vector2Int pos2)
-        {
-            var diff = pos1 - pos2;
-            var distance = Mathf.Abs(diff.x) + Mathf.Abs(diff.y);
-            
-            return distance == 1; // Manhattan distance of 1 means adjacent
-        }
-        
-        /// <summary>
-        /// Converts swipe direction to board direction.
-        /// </summary>
-        /// <param name="swipeDirection">Normalized swipe direction.</param>
-        /// <returns>Board direction vector.</returns>
-        private Vector2Int GetSwipeDirection(Vector2 swipeDirection)
-        {
-            var absX = Mathf.Abs(swipeDirection.x);
-            var absY = Mathf.Abs(swipeDirection.y);
-            
-            if (absX > absY)
+            if (selectedTile != null)
             {
-                // Horizontal swipe
-                return swipeDirection.x > 0 ? Vector2Int.right : Vector2Int.left;
-            }
-            else
-            {
-                // Vertical swipe
-                return swipeDirection.y > 0 ? Vector2Int.up : Vector2Int.down;
+                var spriteRenderer = selectedTile.GetComponent<SpriteRenderer>();
+                if (spriteRenderer != null)
+                {
+                    spriteRenderer.color = Color.white; // Reset color
+                }
+                selectedTile = null;
             }
         }
         
-        private void OnDestroy()
+        /// <summary>
+        /// Locks input processing.
+        /// </summary>
+        public void LockInput()
         {
-            Cleanup();
+            inputLocked = true;
+            Debug.Log("[Match3InputHandler] 🔒 Input locked");
+        }
+        
+        /// <summary>
+        /// Unlocks input processing.
+        /// </summary>
+        public void UnlockInput()
+        {
+            inputLocked = false;
+            Debug.Log("[Match3InputHandler] 🔓 Input unlocked");
+        }
+        
+        /// <summary>
+        /// Forces deselection of current tile.
+        /// </summary>
+        public void ForceDeselect()
+        {
+            DeselectTile();
+            isDragging = false;
+        }
+        
+        /// <summary>
+        /// Gets the current input state summary.
+        /// </summary>
+        /// <returns>Input state summary.</returns>
+        public string GetInputStateSummary()
+        {
+            return $"[Match3InputHandler] Input State:\n" +
+                   $"  - Selected Tile: {(selectedTile != null ? selectedTile.name : "None")}\n" +
+                   $"  - Is Dragging: {isDragging}\n" +
+                   $"  - Input Locked: {inputLocked}";
+        }
+    }
+    
+    /// <summary>
+    /// Result of input processing.
+    /// </summary>
+    public class InputResult
+    {
+        public bool TileSelected { get; set; }
+        public bool TileDeselected { get; set; }
+        public bool SwapDetected { get; set; }
+        public bool IsValidSwap { get; set; }
+        public Swap DetectedSwap { get; set; }
+        public (GameObject tileA, GameObject tileB)? InvalidSwapTiles { get; set; }
+        public GameObject SelectedTile { get; set; }
+        
+        public static InputResult None()
+        {
+            return new InputResult();
         }
     }
 }
