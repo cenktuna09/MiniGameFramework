@@ -4,8 +4,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
-using MiniGameFramework.Core.Architecture;
-using MiniGameFramework.Core.DI;
+using Core.Architecture;
+using Core.DI;
 using MiniGameFramework.MiniGames.Match3.Data;
 using MiniGameFramework.MiniGames.Match3.Board;
 using MiniGameFramework.MiniGames.Match3.Pooling;
@@ -1207,10 +1207,10 @@ namespace MiniGameFramework.MiniGames.Match3
             // Validate configuration with error handler
             errorHandler?.ValidateConfiguration(gameConfig);
             
-            // Initialize error handler (Week 3-4)
+            // Initialize error handler 
             errorHandler = new Match3ErrorHandler(eventBus, true, true, 100);
             
-            // Initialize performance manager (Week 5-6)
+            // Initialize performance manager
             performanceManager = new Match3PerformanceManager(eventBus);
             performanceManager.Initialize();
             performanceManager.StartMonitoring();

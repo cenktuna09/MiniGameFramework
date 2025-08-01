@@ -2,7 +2,7 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using MiniGameFramework.Core.Architecture;
+using Core.Architecture;
 
 namespace MiniGameFramework.UI.Panels
 {

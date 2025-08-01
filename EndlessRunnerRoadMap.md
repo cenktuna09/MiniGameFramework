@@ -269,7 +269,6 @@ public class EndlessRunnerGame : MiniGameBase
         stateManager?.CurrentState == RunnerGameState.Ready || 
         stateManager?.CurrentState == RunnerGameState.Running;
 }
-```
 
 #### **Game States**
 ```csharp
@@ -974,51 +973,40 @@ public class WorldGenerator : MonoBehaviour
 
 #### **Score Manager**
 ```csharp
-// EndlessRunner/Scoring/ScoreManager.cs
-public class ScoreManager
+// EndlessRunner/Scoring/RunnerScoreManager.cs
+public class RunnerScoreManager : BaseScoreManager
 {
-    private IEventBus eventBus;
-    private int currentScore = 0;
-    private int highScore = 0;
     private float distanceTraveled = 0f;
     
-    public int CurrentScore => currentScore;
-    public int HighScore => highScore;
-    
-    public ScoreManager(IEventBus eventBus)
+    public RunnerScoreManager(IEventBus eventBus) : base(eventBus)
     {
-        this.eventBus = eventBus;
-        LoadHighScore();
-        
-        // Subscribe to relevant events
+        // Subscribe to runner-specific events
         eventBus.Subscribe<PlayerMovementEvent>(OnPlayerMoved);
         eventBus.Subscribe<CollectiblePickedUpEvent>(OnCollectiblePickedUp);
         eventBus.Subscribe<GameStartedEvent>(OnGameStarted);
         eventBus.Subscribe<GameEndedEvent>(OnGameEnded);
-    }
-    
-    private void OnGameStarted(GameStartedEvent gameStartedEvent)
-    {
-        // Reset score for new game
-        currentScore = 0;
-        distanceTraveled = 0f;
         
-        Debug.Log("[ScoreManager] 🎮 Score reset for new game");
+        Debug.Log("[RunnerScoreManager] ✅ Runner score manager initialized");
     }
     
-    private void OnGameEnded(GameEndedEvent gameEndedEvent)
+    protected override void LoadHighScore()
     {
-        // Check for high score
-        if (currentScore > highScore)
-        {
-            highScore = currentScore;
-            SaveHighScore();
-            
-            // Publish high score event
-            eventBus?.Publish(new HighScoreEvent(highScore));
-            
-            Debug.Log($"[ScoreManager] 🏆 New high score: {highScore}");
-        }
+        _highScore = PlayerPrefs.GetInt("RunnerHighScore", 0);
+        Debug.Log($"[RunnerScoreManager] 📈 Loaded high score: {_highScore}");
+    }
+    
+    protected override void SaveHighScore()
+    {
+        PlayerPrefs.SetInt("RunnerHighScore", _highScore);
+        PlayerPrefs.Save();
+        Debug.Log($"[RunnerScoreManager] 💾 Saved high score: {_highScore}");
+    }
+    
+    protected override int CalculateScore(int basePoints, int multiplier = 1)
+    {
+        // Runner-specific score calculation with distance bonus
+        var distanceBonus = Mathf.FloorToInt(distanceTraveled * 0.1f);
+        return (basePoints + distanceBonus) * multiplier;
     }
     
     private void OnPlayerMoved(PlayerMovementEvent movementEvent)
@@ -1026,41 +1014,32 @@ public class ScoreManager
         // Calculate score based on distance
         distanceTraveled += movementEvent.MovementDelta.magnitude;
         var distanceScore = Mathf.FloorToInt(distanceTraveled);
+        SetScore(distanceScore);
         
-        UpdateScore(distanceScore);
+        Debug.Log($"[RunnerScoreManager] 📊 Distance score: {distanceScore}");
     }
     
     private void OnCollectiblePickedUp(CollectiblePickedUpEvent collectibleEvent)
     {
         // Add bonus points for collectibles
-        var bonusScore = collectibleEvent.CollectibleValue;
-        UpdateScore(currentScore + bonusScore);
+        AddScore(collectibleEvent.CollectibleValue);
         
-        Debug.Log($"[ScoreManager] 💰 Collected {bonusScore} points from collectible");
+        Debug.Log($"[RunnerScoreManager] 💰 Collected {collectibleEvent.CollectibleValue} points from collectible");
     }
     
-    private void UpdateScore(int newScore)
+    private void OnGameStarted(GameStartedEvent gameStartedEvent)
     {
-        var scoreDelta = newScore - currentScore;
-        currentScore = newScore;
+        ResetScore();
+        distanceTraveled = 0f;
         
-        // Publish score changed event
-        eventBus?.Publish(new ScoreChangedEvent(currentScore, scoreDelta));
-        
-        Debug.Log($"[ScoreManager] 📊 Score updated: {currentScore} (+{scoreDelta})");
+        Debug.Log("[RunnerScoreManager] 🎮 Score reset for new game");
     }
     
-    private void LoadHighScore()
+    private void OnGameEnded(GameEndedEvent gameEndedEvent)
     {
-        highScore = PlayerPrefs.GetInt("RunnerHighScore", 0);
-        Debug.Log($"[ScoreManager] 📈 Loaded high score: {highScore}");
-    }
-    
-    private void SaveHighScore()
-    {
-        PlayerPrefs.SetInt("RunnerHighScore", highScore);
-        PlayerPrefs.Save();
-        Debug.Log($"[ScoreManager] 💾 Saved high score: {highScore}");
+        EndGame();
+        
+        Debug.Log($"[RunnerScoreManager] 🏁 Game ended with score: {_currentScore}");
     }
 }
 ```

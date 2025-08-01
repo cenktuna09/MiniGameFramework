@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using MiniGameFramework.Core.Architecture;
+using Core.Architecture;
 
 namespace MiniGameFramework.MiniGames.Match3.Input.Commands
 {

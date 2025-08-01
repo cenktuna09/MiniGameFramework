@@ -1,6 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
-using MiniGameFramework.Core.Architecture;
+using Core.Architecture;
 
 namespace MiniGameFramework.UI.Panels
 {

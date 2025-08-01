@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using MiniGameFramework.Core.Architecture;
+using Core.Architecture;
 using MiniGameFramework.MiniGames.Match3.Events;
 
 namespace MiniGameFramework.MiniGames.Match3.Utils

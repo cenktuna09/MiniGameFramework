@@ -87,6 +87,10 @@ Assets/Scripts/Core/Common/
 │   ├── BasePerformanceManager.cs
 │   ├── BaseLazyEvaluator.cs
 │   └── IPerformanceManager.cs
+├── ScoringManagement/
+│   ├── BaseScoreManager.cs
+│   ├── ScoreValidator.cs
+│   └── IScoreManager.cs
 ├── ErrorHandling/
 │   ├── BaseErrorHandler.cs
 │   ├── ErrorValidator.cs
@@ -184,7 +188,7 @@ EndlessRunner/
 │   ├── RunnerCollectibleManager.cs (game-specific)
 │   └── RunnerCollectiblePool.cs (extends BaseObjectPool)
 ├── Scoring/
-│   ├── RunnerScoringManager.cs (game-specific)
+│   ├── RunnerScoreManager.cs (extends BaseScoreManager)
 │   └── RunnerScoreCalculator.cs (game-specific)
 ├── Performance/
 │   ├── RunnerPerformanceManager.cs (extends BasePerformanceManager)
@@ -300,7 +304,48 @@ public abstract class BasePerformanceManager
 }
 ```
 
-#### 1.5 BaseErrorHandler
+#### 1.5 BaseScoreManager
+```csharp
+// Core/Common/ScoringManagement/BaseScoreManager.cs
+public abstract class BaseScoreManager
+{
+    protected IEventBus eventBus;
+    protected int currentScore = 0;
+    protected int highScore = 0;
+    protected int scoreMultiplier = 1;
+    protected List<int> scoreHistory;
+    
+    public int CurrentScore => currentScore;
+    public int HighScore => highScore;
+    public int ScoreMultiplier => scoreMultiplier;
+    
+    public event Action<int, int> OnScoreChanged;
+    public event Action<int> OnHighScoreAchieved;
+    
+    protected abstract void LoadHighScore();
+    protected abstract void SaveHighScore();
+    protected abstract int CalculateScore(int basePoints, int multiplier = 1);
+    
+    public virtual void AddScore(int points)
+    {
+        var calculatedPoints = CalculateScore(points, scoreMultiplier);
+        currentScore += calculatedPoints;
+        OnScoreChanged?.Invoke(currentScore, calculatedPoints);
+    }
+    
+    public virtual void UpdateHighScore()
+    {
+        if (currentScore > highScore)
+        {
+            highScore = currentScore;
+            SaveHighScore();
+            OnHighScoreAchieved?.Invoke(highScore);
+        }
+    }
+}
+```
+
+#### 1.6 BaseErrorHandler
 ```csharp
 // Core/Common/ErrorHandling/BaseErrorHandler.cs
 public abstract class BaseErrorHandler
@@ -424,6 +469,63 @@ public class RunnerInputManager : BaseInputManager
             default:
                 return new RunnerMoveCommand(result.MovementVector);
         }
+    }
+}
+
+// EndlessRunner/Scoring/RunnerScoreManager.cs
+public class RunnerScoreManager : BaseScoreManager
+{
+    private float distanceTraveled = 0f;
+    
+    public RunnerScoreManager(IEventBus eventBus) : base(eventBus)
+    {
+        // Subscribe to runner-specific events
+        eventBus.Subscribe<PlayerMovementEvent>(OnPlayerMoved);
+        eventBus.Subscribe<CollectiblePickedUpEvent>(OnCollectiblePickedUp);
+        eventBus.Subscribe<GameStartedEvent>(OnGameStarted);
+        eventBus.Subscribe<GameEndedEvent>(OnGameEnded);
+    }
+    
+    protected override void LoadHighScore()
+    {
+        _highScore = PlayerPrefs.GetInt("RunnerHighScore", 0);
+    }
+    
+    protected override void SaveHighScore()
+    {
+        PlayerPrefs.SetInt("RunnerHighScore", _highScore);
+        PlayerPrefs.Save();
+    }
+    
+    protected override int CalculateScore(int basePoints, int multiplier = 1)
+    {
+        // Runner-specific score calculation
+        return basePoints * multiplier;
+    }
+    
+    private void OnPlayerMoved(PlayerMovementEvent movementEvent)
+    {
+        // Calculate score based on distance
+        distanceTraveled += movementEvent.MovementDelta.magnitude;
+        var distanceScore = Mathf.FloorToInt(distanceTraveled);
+        SetScore(distanceScore);
+    }
+    
+    private void OnCollectiblePickedUp(CollectiblePickedUpEvent collectibleEvent)
+    {
+        // Add bonus points for collectibles
+        AddScore(collectibleEvent.CollectibleValue);
+    }
+    
+    private void OnGameStarted(GameStartedEvent gameStartedEvent)
+    {
+        ResetScore();
+        distanceTraveled = 0f;
+    }
+    
+    private void OnGameEnded(GameEndedEvent gameEndedEvent)
+    {
+        EndGame();
     }
 }
 ```

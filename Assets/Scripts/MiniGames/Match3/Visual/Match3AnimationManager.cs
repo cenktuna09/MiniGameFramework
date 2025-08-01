@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
-using MiniGameFramework.Core.Architecture;
+using Core.Architecture;
 using MiniGameFramework.MiniGames.Match3.Events;
 using MiniGameFramework.MiniGames.Match3.Data;
 using MiniGameFramework.MiniGames.Match3.Logic;

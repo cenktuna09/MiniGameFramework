@@ -3,8 +3,8 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using MiniGameFramework.Core.Architecture;
-using MiniGameFramework.Core.DI;
+using Core.Architecture;
+using Core.DI;
 using MiniGameFramework.Core.Bootstrap;
 
 namespace MiniGameFramework.Core.StateManagement

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
-using MiniGameFramework.Core.Architecture;
+using Core.Architecture;
 using MiniGameFramework.UI.Panels;
 
 namespace MiniGameFramework.UI

@@ -1,7 +1,7 @@
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
-using MiniGameFramework.Core.Architecture;
+using Core.Architecture;
 
 namespace MiniGameFramework.Core.SceneManagement
 {

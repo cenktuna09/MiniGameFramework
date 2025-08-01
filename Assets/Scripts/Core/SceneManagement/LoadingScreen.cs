@@ -2,7 +2,7 @@ using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using MiniGameFramework.Core.Architecture;
+using Core.Architecture;
 using MiniGameFramework.Core.SceneManagement;
 
 namespace MiniGameFramework.Core.SceneManagement

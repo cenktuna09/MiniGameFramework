@@ -4,9 +4,9 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using MiniGameFramework.Core.Architecture;
+using Core.Architecture;
 using MiniGameFramework.Core.Bootstrap;
-using MiniGameFramework.Core.DI;
+using Core.DI;
 
 namespace MiniGameFramework.Core.GameManagement
 {
