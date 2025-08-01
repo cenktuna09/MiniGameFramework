@@ -194,10 +194,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e4dea0fe18224814b96b1784d2b6f851, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  gameId: endless_runner_3d
+  gameId: EndlessRunner
   displayName: 3D Endless Runner
   _autoStartGame: 0
   _enableDebugLogging: 1
+  _obstaclePrefabs:
+  - {fileID: 3799672198299887244, guid: dc00075ec2d144b4fa4da851e59a9d2f, type: 3}
+  _collectiblePrefabs:
+  - {fileID: 1804949600788769397, guid: 36c5e984991cd074ea6ee40b86d2d754, type: 3}
+  _platformPrefab: {fileID: 0}
 --- !u!1 &22540105
 GameObject:
   m_ObjectHideFlags: 0
@@ -692,88 +697,6 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 214766748}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
---- !u!1 &246200738
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 246200740}
-  - component: {fileID: 246200739}
-  m_Layer: 0
-  m_Name: CollectibleManager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 0
---- !u!114 &246200739
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 246200738}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 753f2cd817dcc554ca8ab219fc0860f2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _collectiblePrefabs:
-  - {fileID: 1804949600788769397, guid: 36c5e984991cd074ea6ee40b86d2d754, type: 3}
-  _collectibleTypes: 00000000
-  _collectibleValues: 0a0000003200000019000000
-  _baseSpawnRate: 0.5
-  _spawnDistance: 15
-  _minCollectibleDistance: 5
-  _despawnDistance: 150
-  _difficultyMultiplier: 0.05
-  _maxSpawnRate: 0.9
-  _difficultySpawnCurve:
-    m_Curve:
-    - time: 0
-      value: 0
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - time: 1
-      value: 1
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  _poolSize: 40
-  _initialPoolSize: 20
-  _playerPosition: {x: 0, y: 0, z: 0}
-  _currentDifficulty: 1
-  _lastCollectibleSpawnZ: 0
-  _laneCount: 3
-  _laneWidth: 3
---- !u!4 &246200740
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 246200738}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 5.332961, y: -4.164254, z: -12.048382}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &250268456
 GameObject:
   m_ObjectHideFlags: 0
@@ -1791,7 +1714,7 @@ GameObject:
   - component: {fileID: 600761582}
   m_Layer: 0
   m_Name: Ground
-  m_TagString: Untagged
+  m_TagString: Ground
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -2072,7 +1995,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &717724760
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2101,67 +2024,6 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 1.6317949, y: -10.742374, z: 24.218964}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &730448855
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 730448857}
-  - component: {fileID: 730448856}
-  m_Layer: 0
-  m_Name: WorldGenerator
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 0
---- !u!114 &730448856
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 730448855}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fafd10e886595a3468bfeae6aa618d90, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _groundPrefab: {fileID: 6211821939045856388, guid: 39e5aac642d516f4ba116a9f9a465ab5, type: 3}
-  _groundSegmentLength: 50
-  _spawnDistance: 100
-  _despawnDistance: 150
-  _laneCount: 3
-  _laneWidth: 3
-  _groundPoolSize: 30
-  _initialPoolSize: 10
-  _baseSpeed: 5
-  _maxSpeed: 30
-  _speedIncreaseRate: 0.5
-  _maxDifficulty: 10
-  _currentGameState: 0
-  _playerPosition: {x: 0, y: 0, z: 0}
-  _currentSpeed: 0
-  _currentDifficulty: 1
-  _lastGroundSpawnZ: 0
---- !u!4 &730448857
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 730448855}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 5.332961, y: -4.164254, z: -12.048382}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2477,7 +2339,7 @@ GameObject:
   - component: {fileID: 906759568}
   m_Layer: 0
   m_Name: Ground
-  m_TagString: Untagged
+  m_TagString: Ground
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -3297,42 +3159,6 @@ Transform:
   - {fileID: 906759567}
   m_Father: {fileID: 1926499154}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1148116496
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1148116497}
-  m_Layer: 0
-  m_Name: Testers
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1148116497
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1148116496}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.4635642, y: 5.8254523, z: 2.3935473}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 1702860975}
-  - {fileID: 1473462811}
-  - {fileID: 1529916417}
-  - {fileID: 1876292282}
-  - {fileID: 1182534579}
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1167086741
 GameObject:
   m_ObjectHideFlags: 0
@@ -3472,64 +3298,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 789724618}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1182534578
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1182534579}
-  - component: {fileID: 1182534580}
-  m_Layer: 0
-  m_Name: GameLoopTester
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 0
---- !u!4 &1182534579
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1182534578}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1148116497}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1182534580
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1182534578}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 48402b327edad0144b2b4e4ed9f4a69a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _enableTesting: 1
-  _logEvents: 1
-  _autoStartGame: 1
-  _testDuration: 30
-  _testPlayerMovement: 1
-  _testWorldGeneration: 1
-  _testObstacleSpawning: 1
-  _testCollectibleSpawning: 1
-  _testScoring: 1
-  _testPerformance: 1
-  _gameController: {fileID: 0}
-  _isInitialized: 0
-  _testTimer: 0
-  _testPhase: 0
 --- !u!1 &1241686346
 GameObject:
   m_ObjectHideFlags: 0
@@ -3854,88 +3622,6 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1264398977}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
---- !u!1 &1357294193
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1357294195}
-  - component: {fileID: 1357294194}
-  m_Layer: 0
-  m_Name: ObstacleManager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 0
---- !u!114 &1357294194
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1357294193}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 591dbcf35a66c0d49b567f2f52843a7a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _obstaclePrefabs:
-  - {fileID: 3799672198299887244, guid: dc00075ec2d144b4fa4da851e59a9d2f, type: 3}
-  - {fileID: 2445817455125713642, guid: e435ab1c59c5eff428e97c7c4cde49a9, type: 3}
-  _obstacleTypes: 000000000100000004000000
-  _baseSpawnRate: 0.3
-  _spawnDistance: 0
-  _minObstacleDistance: 50
-  _despawnDistance: 150
-  _difficultyMultiplier: 0.1
-  _maxSpawnRate: 0.8
-  _difficultySpawnCurve:
-    m_Curve:
-    - time: 0
-      value: 0
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - time: 1
-      value: 1
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  _poolSize: 30
-  _initialPoolSize: 15
-  _playerPosition: {x: 0, y: 0, z: 0}
-  _currentDifficulty: 1
-  _lastObstacleSpawnZ: 0
-  _laneCount: 3
-  _laneWidth: 3
---- !u!4 &1357294195
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1357294193}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 5.332961, y: -4.164254, z: -12.048382}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1389727493
 GameObject:
   m_ObjectHideFlags: 0
@@ -3950,7 +3636,7 @@ GameObject:
   - component: {fileID: 1389727494}
   m_Layer: 0
   m_Name: Ground
-  m_TagString: Untagged
+  m_TagString: Ground
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -4107,61 +3793,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 789724618}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1473462810
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1473462811}
-  - component: {fileID: 1473462812}
-  m_Layer: 0
-  m_Name: Collectible
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 0
---- !u!4 &1473462811
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1473462810}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1148116497}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1473462812
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1473462810}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1762624a7b14d1e4a953ca3a41d8e812, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _enableTesting: 1
-  _logEvents: 1
-  _autoSpawnCollectibles: 1
-  _spawnInterval: 2
-  _testCollectibleType: 0
-  _testSpawnPosition: {x: 0, y: 2, z: 10}
-  _testLaneIndex: 1
-  _collectibleManager: {fileID: 0}
-  _isInitialized: 0
-  _testTimer: 0
-  _collectiblesSpawned: 0
 --- !u!1 &1515770330
 GameObject:
   m_ObjectHideFlags: 0
@@ -4270,61 +3901,6 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1515770330}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
---- !u!1 &1529916416
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1529916417}
-  - component: {fileID: 1529916418}
-  m_Layer: 0
-  m_Name: ObstacleTester
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 0
---- !u!4 &1529916417
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1529916416}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1148116497}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1529916418
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1529916416}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b07bae02c0ab21445a634b50ebbce6ed, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _enableTesting: 1
-  _logEvents: 1
-  _autoSpawnObstacles: 1
-  _spawnInterval: 3
-  _testObstacleType: 0
-  _testSpawnPosition: {x: 0, y: 1, z: 10}
-  _testLaneIndex: 1
-  _obstacleManager: {fileID: 0}
-  _isInitialized: 0
-  _testTimer: 0
-  _obstaclesSpawned: 0
 --- !u!1 &1539669015
 GameObject:
   m_ObjectHideFlags: 0
@@ -4776,59 +4352,6 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1698399790}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
---- !u!1 &1702860974
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1702860975}
-  - component: {fileID: 1702860976}
-  m_Layer: 0
-  m_Name: World
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 0
---- !u!4 &1702860975
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1702860974}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1148116497}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1702860976
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1702860974}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d918456c51cdc21409b5a4d85ca96b90, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _autoStart: 1
-  _testDuration: 30
-  _playerMovementSpeed: 10
-  _worldGenerator: {fileID: 730448856}
-  _obstacleManager: {fileID: 1357294194}
-  _collectibleManager: {fileID: 246200739}
-  _simulatedPlayerPosition: {x: 0, y: 0, z: 0}
-  _testStartTime: 0
-  _testRunning: 0
 --- !u!1 &1733990250
 GameObject:
   m_ObjectHideFlags: 0
@@ -5484,54 +5007,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 446999756}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1876292281
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1876292282}
-  - component: {fileID: 1876292283}
-  m_Layer: 0
-  m_Name: PlayerControllerTester
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 0
---- !u!4 &1876292282
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1876292281}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1148116497}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1876292283
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1876292281}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c125a9bf6fdcd9e4484849f9b432aca0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _enableTesting: 1
-  _logEvents: 1
-  _playerController: {fileID: 0}
-  _isInitialized: 0
 --- !u!1 &1926499152
 GameObject:
   m_ObjectHideFlags: 0
@@ -6120,7 +5595,7 @@ GameObject:
   - component: {fileID: 2105629298}
   m_Layer: 0
   m_Name: Ground
-  m_TagString: Untagged
+  m_TagString: Ground
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -6438,9 +5913,5 @@ SceneRoots:
   - {fileID: 937534056}
   - {fileID: 1827842112}
   - {fileID: 8092194}
-  - {fileID: 1148116497}
-  - {fileID: 730448857}
-  - {fileID: 246200740}
-  - {fileID: 1357294195}
   - {fileID: 717724761}
   - {fileID: 1541501843}

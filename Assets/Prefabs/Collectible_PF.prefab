@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 2147957924969376084}
   - component: {fileID: 8318866537390231148}
   - component: {fileID: 4219850941345345630}
+  - component: {fileID: 4167329423892293810}
   m_Layer: 0
   m_Name: Collectible_PF
   m_TagString: Collectible
@@ -108,3 +109,21 @@ SphereCollider:
   serializedVersion: 3
   m_Radius: 0.5
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &4167329423892293810
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1804949600788769397}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 70bcbbb8eb9d3ba4bb8276c0452f554a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _collectibleType: 0
+  _pointValue: 10
+  _isActive: 1
+  _rotationSpeed: 90
+  _bobSpeed: 5
+  _bobHeight: 0.5

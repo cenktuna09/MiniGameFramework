@@ -1,14 +1,10 @@
 using System;
 using System.Threading.Tasks;
 using UnityEngine;
-using Core.Common.StateManagement;
-using Core.Common.InputManagement;
-using Core.Common.PerformanceManagement;
-using Core.Common.ConfigManagement;
-using Core.Common.ScoringManagement;
-using Core.Events;
 using Core.Architecture;
 using Core.DI;
+using Core.Events;
+using Core.Common.StateManagement;
 using EndlessRunner.StateManagement;
 using EndlessRunner.Input;
 using EndlessRunner.Scoring;
@@ -18,25 +14,36 @@ using EndlessRunner.Events;
 using EndlessRunner.Config;
 using EndlessRunner.Player;
 using EndlessRunner.World;
+using EndlessRunner.Factories;
+using EndlessRunner.Obstacles;
+using EndlessRunner.Collectibles;
 
 namespace EndlessRunner.Core
 {
     /// <summary>
     /// Main game controller for 3D Endless Runner
-    /// Manages all game systems and coordinates gameplay
+    /// Thin facade coordinating specialized managers
     /// Extends MiniGameBase for framework compliance
     /// </summary>
     public class EndlessRunnerGame : MiniGameBase
     {
         #region Serialized Fields
         
-        [Header("Game Systems")]
-        [SerializeField] private bool _autoStartGame = false; // Changed to false - game starts on first tap
+        [Header("Game Configuration")]
+        [SerializeField] private bool _autoStartGame = false;
         [SerializeField] private bool _enableDebugLogging = true;
+        
+        [Header("Factory Settings")]
+        [SerializeField] private GameObject[] _obstaclePrefabs;
+        [SerializeField] private GameObject[] _collectiblePrefabs;
+        [SerializeField] private GameObject _platformPrefab;
         
         #endregion
         
         #region Private Fields
+        
+        // Framework services
+        private IEventBus _eventBus;
         
         // Core systems - using framework EventBus
         private RunnerStateManager _stateManager;
@@ -47,6 +54,10 @@ namespace EndlessRunner.Core
         
         // Game systems
         private PlayerController _playerController;
+        private EndlessRunnerScrollController _scrollController;
+        
+        // Factory system
+        private EndlessRunnerFactoryManager _factoryManager;
         
         // Game state
         private bool _isInitialized = false;
@@ -79,6 +90,7 @@ namespace EndlessRunner.Core
         public RunnerStateManager StateManager => _stateManager;
         public RunnerScoreManager ScoreManager => _scoreManager;
         public PlayerController PlayerController => _playerController;
+        public EndlessRunnerFactoryManager FactoryManager => _factoryManager;
         
         #endregion
         
@@ -86,6 +98,7 @@ namespace EndlessRunner.Core
         
         protected override void Awake()
         {
+            Debug.Log("[EndlessRunnerGame] 🔧 Awake called");
             base.Awake();
             // Don't initialize here - wait for OnInitializeAsync()
         }
@@ -105,7 +118,7 @@ namespace EndlessRunner.Core
         
         private void Update()
         {
-            // Always process input, even when game is not running (for start input)
+            // Always process input, even when game is not running (for first tap to start)
             _inputManager?.ProcessInput();
             
             if (_isGameRunning)
@@ -117,24 +130,23 @@ namespace EndlessRunner.Core
         
         private new void OnDestroy()
         {
+            OnUnityDestroy();
+        }
+        
+        private void OnUnityDestroy()
+        {
             CleanupGame();
         }
         
         #endregion
         
-        #region Public Methods
+        #region Public Game Control Methods
         
         /// <summary>
         /// Start the game
         /// </summary>
         public void StartGame()
         {
-            if (!_isInitialized)
-            {
-                Debug.LogError("[EndlessRunnerGame] ❌ Game not initialized!");
-                return;
-            }
-            
             if (_isGameRunning)
             {
                 Debug.LogWarning("[EndlessRunnerGame] ⚠️ Game already running!");
@@ -145,8 +157,12 @@ namespace EndlessRunner.Core
             _gameStartTime = Time.time;
             _currentGameTime = 0f;
             
-            // Initialize systems
-            InitializeSystems();
+            // Initialize systems if not already done
+            if (!_isInitialized)
+            {
+                Debug.LogWarning("[EndlessRunnerGame] ⚠️ Game not initialized, initializing now");
+                InitializeCoreSystems(_eventBus);
+            }
             
             // Start game state
             _stateManager?.TransitionTo(RunnerGameState.Running);
@@ -155,8 +171,7 @@ namespace EndlessRunner.Core
             _inputManager?.UnlockInput();
             
             // Publish game started event
-            var eventBus = ServiceLocator.Instance.Resolve<IEventBus>();
-            eventBus?.Publish(new GameStartedEvent(Time.time));
+            _eventBus?.Publish(new GameStartedEvent(Time.time));
             
             Debug.Log("[EndlessRunnerGame] 🎮 Game started");
         }
@@ -234,45 +249,51 @@ namespace EndlessRunner.Core
         
         #endregion
         
-        #region MiniGameBase Override Methods
+        #region MiniGameBase Implementation
         
-        /// <summary>
-        /// Initialize the mini-game asynchronously
-        /// </summary>
         protected override async Task OnInitializeAsync()
         {
-            Debug.Log("[EndlessRunnerGame] 🎮 Initializing Endless Runner Game (Async)...");
-            
-            // Use framework EventBus from ServiceLocator
-            var eventBus = ServiceLocator.Instance.Resolve<IEventBus>();
-            if (eventBus == null)
+            Debug.Log("[EndlessRunnerGame] 🚀 OnInitializeAsync called");
+            try
             {
-                Debug.LogError("[EndlessRunnerGame] ❌ No EventBus found in ServiceLocator!");
-                return;
+                Debug.Log("[EndlessRunnerGame] 🚀 Starting initialization...");
+                
+                // Get EventBus from ServiceLocator
+                _eventBus = ServiceLocator.Instance.Resolve<IEventBus>();
+                if (_eventBus == null)
+                {
+                    Debug.LogError("[EndlessRunnerGame] ❌ No EventBus found in ServiceLocator!");
+                    return;
+                }
+                
+                // Initialize core systems
+                InitializeCoreSystems(_eventBus);
+                
+                // Initialize Factory Manager
+                InitializeFactoryManager();
+                
+                // Find and initialize game systems
+                FindGameSystems(_eventBus);
+                
+                // Initialize all systems
+                InitializeSystems();
+                
+                // Subscribe to events
+                SubscribeToEvents(_eventBus);
+                
+                _isInitialized = true;
+                
+                Debug.Log("[EndlessRunnerGame] ✅ Initialization completed successfully");
+                
+                await Task.CompletedTask;
             }
-            
-            Debug.Log("[EndlessRunnerGame] ✅ Using framework EventBus from ServiceLocator");
-            
-            // Initialize core systems with framework EventBus
-            InitializeCoreSystems(eventBus);
-            
-            // Find game systems
-            FindGameSystems(eventBus);
-            
-            // Subscribe to events
-            SubscribeToEvents(eventBus);
-            
-            _isInitialized = true;
-            
-            Debug.Log("[EndlessRunnerGame] ✅ Game initialization complete (Async)");
-            
-            // Add await to make the method truly async
-            await Task.CompletedTask;
+            catch (Exception ex)
+            {
+                Debug.LogError($"[EndlessRunnerGame] ❌ Initialization failed: {ex.Message}");
+                throw;
+            }
         }
         
-        /// <summary>
-        /// Start the mini-game
-        /// </summary>
         protected override void OnStart()
         {
             if (!_isInitialized)
@@ -281,71 +302,29 @@ namespace EndlessRunner.Core
                 return;
             }
             
-            if (_isGameRunning)
-            {
-                Debug.LogWarning("[EndlessRunnerGame] ⚠️ Game already running!");
-                return;
-            }
-            
-            // Don't auto-start the game - wait for user input
-            // The game should start in Ready state and wait for first tap
-            Debug.Log("[EndlessRunnerGame] 🎯 Game ready - waiting for user input to start");
+            StartGame();
         }
         
-        /// <summary>
-        /// Pause the mini-game
-        /// </summary>
         protected override void OnPause()
         {
-            if (!_isGameRunning) return;
-            
-            _stateManager?.TransitionTo(RunnerGameState.Paused);
-            
-            Debug.Log("[EndlessRunnerGame] ⏸️ Game paused");
+            PauseGame();
         }
         
-        /// <summary>
-        /// Resume the mini-game
-        /// </summary>
         protected override void OnResume()
         {
-            if (_stateManager?.CurrentState != RunnerGameState.Paused) return;
-            
-            _stateManager?.TransitionTo(RunnerGameState.Running);
-            
-            Debug.Log("[EndlessRunnerGame] ▶️ Game resumed");
+            ResumeGame();
         }
         
-        /// <summary>
-        /// End the mini-game
-        /// </summary>
         protected override void OnEnd()
         {
-            if (!_isGameRunning) return;
-            
-            _isGameRunning = false;
-            _stateManager?.TransitionTo(RunnerGameState.GameOver);
-            
-            // Save final score
-            _scoreManager?.EndGame();
-            
-            Debug.Log("[EndlessRunnerGame] 🏁 Game ended");
+            EndGame();
         }
         
-        /// <summary>
-        /// Clean up resources
-        /// </summary>
         protected override void OnCleanup()
         {
-            // Clean up all systems
             CleanupGame();
-            
-            Debug.Log("[EndlessRunnerGame] 🧹 Cleanup completed");
         }
         
-        /// <summary>
-        /// Get the current score for this game session
-        /// </summary>
         public override int GetCurrentScore()
         {
             return _scoreManager?.CurrentScore ?? 0;
@@ -353,61 +332,101 @@ namespace EndlessRunner.Core
         
         #endregion
         
-        #region Private Helper Methods
+        #region Private Methods - Initialization
         
         /// <summary>
-        /// Set the game state using the base class method
-        /// </summary>
-        /// <param name="newState">New game state</param>
-        private void SetGameState(GameState newState)
-        {
-            SetState(newState);
-        }
-        
-        #endregion
-        
-        #region Private Methods
-        
-        /// <summary>
-        /// Initialize core systems using framework EventBus
+        /// Initialize core systems using framework services
         /// </summary>
         private void InitializeCoreSystems(IEventBus eventBus)
         {
-            // Create state manager with framework EventBus
+            // Initialize state manager
             _stateManager = new RunnerStateManager(eventBus);
+            RegisterSceneService(_stateManager);
             
-            // Create score manager with framework EventBus
+            // Initialize score manager
             _scoreManager = new RunnerScoreManager(eventBus);
+            RegisterSceneService(_scoreManager);
             
-            // Create input manager with framework EventBus
+            // Initialize input manager
             _inputManager = new RunnerInputManager(eventBus);
+            RegisterSceneService(_inputManager);
             
-            // Create performance manager with framework EventBus
+            // Initialize performance manager
             _performanceManager = new RunnerPerformanceManager(eventBus);
+            RegisterSceneService(_performanceManager);
             
-            // Create error handler with framework EventBus
+            // Initialize error handler
             _errorHandler = new RunnerErrorHandler(eventBus);
+            RegisterSceneService(_errorHandler);
             
-            Debug.Log("[EndlessRunnerGame] ✅ Core systems initialized with framework EventBus");
+            Debug.Log("[EndlessRunnerGame] ✅ Core systems initialized");
         }
         
         /// <summary>
-        /// Find game systems in scene
+        /// Initialize Factory Manager
+        /// </summary>
+        private void InitializeFactoryManager()
+        {
+            // Create factory manager
+            _factoryManager = new EndlessRunnerFactoryManager(
+                obstacleParent: transform.Find("Obstacles"),
+                collectibleParent: transform.Find("Collectibles"),
+                platformParent: transform.Find("Platforms")
+            );
+            
+            // Register obstacle factories
+            if (_obstaclePrefabs != null && _obstaclePrefabs.Length > 0)
+            {
+                foreach (var prefab in _obstaclePrefabs)
+                {
+                    if (prefab != null)
+                    {
+                        _factoryManager.RegisterObstacleFactory(ObstacleType.Block, prefab, 1f, 0.7f);
+                    }
+                }
+            }
+            
+            // Register collectible factories
+            if (_collectiblePrefabs != null && _collectiblePrefabs.Length > 0)
+            {
+                foreach (var prefab in _collectiblePrefabs)
+                {
+                    if (prefab != null)
+                    {
+                        _factoryManager.RegisterCollectibleFactory(CollectibleType.Coin, prefab, 10, 0.8f, 90f);
+                    }
+                }
+            }
+            
+            // Register platform factory
+            if (_platformPrefab != null)
+            {
+                _factoryManager.RegisterPlatformFactory(_platformPrefab, 50f, 10f, 5, 10);
+            }
+            
+            // Register with ServiceLocator
+            RegisterSceneService(_factoryManager);
+            
+            Debug.Log("[EndlessRunnerGame] ✅ Factory Manager initialized");
+        }
+        
+        /// <summary>
+        /// Find and initialize game systems
         /// </summary>
         private void FindGameSystems(IEventBus eventBus)
         {
             // Find player controller
             _playerController = FindFirstObjectByType<PlayerController>();
-            if (_playerController != null)
+            if (_playerController == null)
             {
-                _playerController.Initialize(eventBus);
+                Debug.LogError("[EndlessRunnerGame] ❌ PlayerController not found!");
             }
             
             // Find scroll controller
-            var scrollController = FindFirstObjectByType<EndlessRunnerScrollController>();
-            if (scrollController != null)
+            _scrollController = FindFirstObjectByType<EndlessRunnerScrollController>();
+            if (_scrollController == null)
             {
-                scrollController.Initialize(eventBus);
+                Debug.LogError("[EndlessRunnerGame] ❌ EndlessRunnerScrollController not found!");
             }
             
             Debug.Log("[EndlessRunnerGame] ✅ Game systems found");
@@ -418,46 +437,42 @@ namespace EndlessRunner.Core
         /// </summary>
         private void InitializeSystems()
         {
-            // Initialize state manager
-            _stateManager?.TransitionTo(RunnerGameState.Ready);
+            // Initialize scroll controller
+            if (_scrollController != null)
+            {
+                _scrollController.Initialize(_eventBus);
+            }
             
-            // Initialize score manager
-            _scoreManager?.ResetScore();
-            
-            // Initialize input manager
-            _inputManager?.ResetInputState();
-            
-            // Initialize performance manager
-            _performanceManager?.StartMonitoring();
-            
-            // Initialize error handler
-            _errorHandler?.SetLoggingEnabled(_enableDebugLogging);
+            // Initialize player controller
+            if (_playerController != null)
+            {
+                _playerController.Initialize(_eventBus);
+            }
             
             Debug.Log("[EndlessRunnerGame] ✅ All systems initialized");
         }
         
+        #endregion
+        
+        #region Private Methods - Event Handling
+        
         /// <summary>
-        /// Subscribe to game events using framework EventBus
+        /// Subscribe to relevant events
         /// </summary>
         private void SubscribeToEvents(IEventBus eventBus)
         {
-            // Subscribe to state changes
             _gameStateSubscription = eventBus.Subscribe<StateChangedEvent<RunnerGameState>>(OnGameStateChanged);
-            
-            // Subscribe to player events
             _playerDeathSubscription = eventBus.Subscribe<PlayerDeathEvent>(OnPlayerDeath);
-            
-            // Subscribe to score events
-            _scoreUpdateSubscription = eventBus.Subscribe<Events.ScoreChangedEvent>(OnScoreUpdated);
-            
-            // Subscribe to collectible events
+            _scoreUpdateSubscription = eventBus.Subscribe<EndlessRunner.Events.ScoreChangedEvent>(OnScoreUpdated);
             _collectibleCollectedSubscription = eventBus.Subscribe<CollectibleCollectedEvent>(OnCollectibleCollected);
-            
-            // Subscribe to obstacle events
             _obstacleCollisionSubscription = eventBus.Subscribe<ObstacleCollisionEvent>(OnObstacleCollision);
             
-            Debug.Log("[EndlessRunnerGame] ✅ Event subscriptions created with framework EventBus");
+            Debug.Log("[EndlessRunnerGame] ✅ Event subscriptions completed");
         }
+        
+        #endregion
+        
+        #region Private Methods - Update Logic
         
         /// <summary>
         /// Update game time
@@ -475,28 +490,36 @@ namespace EndlessRunner.Core
         /// </summary>
         private void UpdateGameSystems()
         {
-            // Update performance monitoring
+            // Update performance manager
             _performanceManager?.UpdateMonitoring();
             
-            // Update error handling
-            _errorHandler?.SafeExecute(() => {
-                // Safe game update logic
-            }, "GameUpdate");
+            // Update scroll controller
+            if (_scrollController != null)
+            {
+                // Scroll controller updates itself in Update()
+            }
         }
         
+        #endregion
+        
+        #region Private Methods - Cleanup
+        
         /// <summary>
-        /// Cleanup game resources
+        /// Clean up game resources
         /// </summary>
         private void CleanupGame()
         {
-            // Unsubscribe from events
+            // Dispose event subscriptions
             _gameStateSubscription?.Dispose();
             _playerDeathSubscription?.Dispose();
             _scoreUpdateSubscription?.Dispose();
             _collectibleCollectedSubscription?.Dispose();
             _obstacleCollisionSubscription?.Dispose();
             
-            Debug.Log("[EndlessRunnerGame] 🧹 Game cleanup complete");
+            // Clear scene services
+            ServiceLocator.Instance.ClearSceneServices();
+            
+            Debug.Log("[EndlessRunnerGame] 🧹 Cleanup completed");
         }
         
         #endregion
@@ -508,34 +531,28 @@ namespace EndlessRunner.Core
         /// </summary>
         private void OnGameStateChanged(StateChangedEvent<RunnerGameState> stateEvent)
         {
-            Debug.Log($"[EndlessRunnerGame] 🔄 State changed: {stateEvent.OldState} -> {stateEvent.NewState}");
-            
             switch (stateEvent.NewState)
             {
                 case RunnerGameState.Ready:
-                    Debug.Log("[EndlessRunnerGame] 🎯 Game ready to start");
+                    _isGameRunning = false;
                     break;
                     
                 case RunnerGameState.Running:
-                    Debug.Log("[EndlessRunnerGame] 🏃 Game running");
-                    break;
-                    
-                case RunnerGameState.Jumping:
-                    Debug.Log("[EndlessRunnerGame] 🦘 Player jumping");
-                    break;
-                    
-                case RunnerGameState.Sliding:
-                    Debug.Log("[EndlessRunnerGame] 🛷 Player sliding");
+                    _isGameRunning = true;
                     break;
                     
                 case RunnerGameState.Paused:
-                    Debug.Log("[EndlessRunnerGame] ⏸️ Game paused");
+                    _isGameRunning = false;
                     break;
                     
                 case RunnerGameState.GameOver:
-                    Debug.Log("[EndlessRunnerGame] 💀 Game over");
-                    EndGame();
+                    _isGameRunning = false;
                     break;
+            }
+            
+            if (_enableDebugLogging)
+            {
+                Debug.Log($"[EndlessRunnerGame] 🔄 State changed to: {stateEvent.NewState}");
             }
         }
         
@@ -544,10 +561,12 @@ namespace EndlessRunner.Core
         /// </summary>
         private void OnPlayerDeath(PlayerDeathEvent deathEvent)
         {
-            Debug.Log($"[EndlessRunnerGame] 💀 Player died: {deathEvent.DeathCause}");
-            
-            // End the game
             EndGame();
+            
+            if (_enableDebugLogging)
+            {
+                Debug.Log($"[EndlessRunnerGame] 💀 Player died: {deathEvent.DeathCause}");
+            }
         }
         
         /// <summary>
@@ -555,7 +574,10 @@ namespace EndlessRunner.Core
         /// </summary>
         private void OnScoreUpdated(EndlessRunner.Events.ScoreChangedEvent scoreEvent)
         {
-            Debug.Log($"[EndlessRunnerGame] 📊 Score updated: {scoreEvent.NewScore} (+{scoreEvent.ScoreChange})");
+            if (_enableDebugLogging)
+            {
+                Debug.Log($"[EndlessRunnerGame] 📊 Score updated: {scoreEvent.NewScore}");
+            }
         }
         
         /// <summary>
@@ -563,7 +585,10 @@ namespace EndlessRunner.Core
         /// </summary>
         private void OnCollectibleCollected(CollectibleCollectedEvent collectionEvent)
         {
-            Debug.Log($"[EndlessRunnerGame] 💰 Collectible collected: {collectionEvent.CollectibleType} at {collectionEvent.Position}");
+            if (_enableDebugLogging)
+            {
+                Debug.Log($"[EndlessRunnerGame] 🪙 Collectible collected: {collectionEvent.CollectibleType}");
+            }
         }
         
         /// <summary>
@@ -571,17 +596,9 @@ namespace EndlessRunner.Core
         /// </summary>
         private void OnObstacleCollision(ObstacleCollisionEvent collisionEvent)
         {
-            Debug.Log($"[EndlessRunnerGame] 💥 Obstacle collision: {collisionEvent.ObstacleType} at {collisionEvent.CollisionPoint}");
-            
-            // Handle damage based on collision force
-            int damageAmount = Mathf.RoundToInt(collisionEvent.CollisionForce);
-            _playerController?.TakeDamage(damageAmount);
-            
-            // Check if player died and lock input
-            if (_playerController != null && _playerController.IsDead)
+            if (_enableDebugLogging)
             {
-                _inputManager?.LockInput();
-                Debug.Log("[EndlessRunnerGame] 🔒 Input locked due to player death");
+                Debug.Log($"[EndlessRunnerGame] 💥 Obstacle collision: {collisionEvent.ObstacleType}");
             }
         }
         

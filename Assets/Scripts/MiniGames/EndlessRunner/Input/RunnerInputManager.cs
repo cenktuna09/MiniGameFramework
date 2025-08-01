@@ -81,26 +81,37 @@ namespace EndlessRunner.Input
         /// </summary>
         public override void ProcessInput()
         {
-            if (_isInputLocked) return;
+            if (_isInputLocked) 
+            {
+                Debug.Log("[RunnerInputManager] 🔒 Input is locked");
+                return;
+            }
             
             // Check if player is dead - if so, don't process input
             var playerController = Object.FindFirstObjectByType<EndlessRunner.Player.PlayerController>();
             if (playerController != null && playerController.IsDead)
             {
+                Debug.Log("[RunnerInputManager] 💀 Player is dead, not processing input");
                 return; // Don't process input when player is dead
             }
             
             var inputResult = inputHandler?.ProcessInput() ?? ProcessInputDirectly();
             if (inputResult.HasInput)
             {
+                Debug.Log($"[RunnerInputManager] 🎮 Input detected: {inputResult.InputStarted}, {inputResult.InputEnded}, {inputResult.MovementDetected}");
+                
                 // Handle first tap to start the game
                 if (!_gameStarted && inputResult.InputStarted)
                 {
+                    Debug.Log("[RunnerInputManager] 🚀 First tap detected, starting game!");
                     StartGame();
                 }
                 
                 var command = CreateCommandFromInput(inputResult);
-                HandleInputCommand(command);
+                if (command != null)
+                {
+                    HandleInputCommand(command);
+                }
             }
         }
         

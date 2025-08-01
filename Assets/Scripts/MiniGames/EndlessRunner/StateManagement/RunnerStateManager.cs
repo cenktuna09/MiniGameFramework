@@ -77,6 +77,8 @@ namespace EndlessRunner.StateManagement
         /// <returns>True if transition is valid</returns>
         public override bool CanTransitionTo(RunnerGameState newState)
         {
+            Debug.Log($"[RunnerStateManager] 🔄 Checking transition from {CurrentState} to {newState}");
+            
             // Runner-specific validation logic
             if (newState == RunnerGameState.Jumping && CurrentState != RunnerGameState.Running)
             {
@@ -97,7 +99,9 @@ namespace EndlessRunner.StateManagement
             }
             
             // Use base validation
-            return base.CanTransitionTo(newState);
+            bool canTransition = base.CanTransitionTo(newState);
+            Debug.Log($"[RunnerStateManager] ✅ Can transition to {newState}: {canTransition}");
+            return canTransition;
         }
         
         /// <summary>

@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 1228489451492609998}
   - component: {fileID: 2418118393105090037}
   - component: {fileID: 1721923976976206838}
+  - component: {fileID: 7569810256246766868}
   m_Layer: 0
   m_Name: Obstacle2_PF (1)
   m_TagString: Obstacle
@@ -108,3 +109,19 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &7569810256246766868
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3799672198299887244}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2cfd7e0b953eb0840a19d9fcd09960d6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _obstacleType: 0
+  _damageAmount: 1
+  _isActive: 1
+  _rotationSpeed: 0

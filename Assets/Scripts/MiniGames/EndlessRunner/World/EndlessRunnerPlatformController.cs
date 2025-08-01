@@ -4,12 +4,16 @@ using Core.Events;
 using Core.Architecture;
 using EndlessRunner.Events;
 using Core.DI;
+using EndlessRunner.Factories;
+using EndlessRunner.Obstacles;
+using EndlessRunner.Collectibles;
 
 namespace EndlessRunner.World
 {
     /// <summary>
     /// Adapted PlatformController for EndlessRunner framework
     /// Handles individual platform management with event-driven architecture
+    /// Now uses Factory Manager for object creation
     /// </summary>
     public class EndlessRunnerPlatformController : MonoBehaviour
     {
@@ -36,6 +40,7 @@ namespace EndlessRunner.World
         #region Private Fields
         
         private IEventBus _eventBus;
+        private EndlessRunnerFactoryManager _factoryManager;
         private bool _isInitialized = false;
         private Vector3 _originalPosition;
         
@@ -68,13 +73,20 @@ namespace EndlessRunner.World
         #region Public Methods
         
         /// <summary>
-        /// Initialize the platform with event bus
+        /// Initialize the platform with event bus and factory manager
         /// </summary>
         /// <param name="eventBus">Event bus for communication</param>
         public void Initialize(IEventBus eventBus)
         {
             _eventBus = eventBus;
             _isInitialized = true;
+            
+            // Get factory manager from ServiceLocator
+            _factoryManager = ServiceLocator.Instance.Resolve<EndlessRunnerFactoryManager>();
+            if (_factoryManager == null)
+            {
+                Debug.LogWarning("[EndlessRunnerPlatformController] ⚠️ No Factory Manager found, creating objects directly");
+            }
             
             // Publish platform initialized event
             _eventBus?.Publish(new PlatformInitializedEvent(transform.position, gameObject));
@@ -134,6 +146,70 @@ namespace EndlessRunner.World
             _eventBus?.Publish(new PlatformResetEvent(transform.position, gameObject));
         }
         
+        #region Platform Configuration Methods
+        
+        /// <summary>
+        /// Set platform length
+        /// </summary>
+        /// <param name="length">Platform length</param>
+        public void SetPlatformLength(float length)
+        {
+            // This would typically modify the platform mesh or collider
+            Debug.Log($"[EndlessRunnerPlatformController] 📏 Platform length set to: {length}");
+        }
+        
+        /// <summary>
+        /// Set maximum obstacles
+        /// </summary>
+        /// <param name="maxObstacles">Maximum number of obstacles</param>
+        public void SetMaxObstacles(int maxObstacles)
+        {
+            // This would limit obstacle spawning
+            Debug.Log($"[EndlessRunnerPlatformController] 🚧 Max obstacles set to: {maxObstacles}");
+        }
+        
+        /// <summary>
+        /// Set maximum collectibles
+        /// </summary>
+        /// <param name="maxCollectibles">Maximum number of collectibles</param>
+        public void SetMaxCollectibles(int maxCollectibles)
+        {
+            // This would limit collectible spawning
+            Debug.Log($"[EndlessRunnerPlatformController] 💰 Max collectibles set to: {maxCollectibles}");
+        }
+        
+        /// <summary>
+        /// Set skip first loop flag
+        /// </summary>
+        /// <param name="skipFirstLoop">Whether to skip first loop</param>
+        public void SetSkipFirstLoop(bool skipFirstLoop)
+        {
+            _skipFirstLoop = skipFirstLoop;
+            Debug.Log($"[EndlessRunnerPlatformController] 🔄 Skip first loop set to: {skipFirstLoop}");
+        }
+        
+        /// <summary>
+        /// Set obstacle spawn chance
+        /// </summary>
+        /// <param name="spawnChance">Spawn chance (0-1)</param>
+        public void SetObstacleSpawnChance(float spawnChance)
+        {
+            _obstacleSpawnChance = Mathf.Clamp01(spawnChance);
+            Debug.Log($"[EndlessRunnerPlatformController] 🎲 Obstacle spawn chance set to: {_obstacleSpawnChance}");
+        }
+        
+        /// <summary>
+        /// Set collectible spawn chance
+        /// </summary>
+        /// <param name="spawnChance">Spawn chance (0-1)</param>
+        public void SetCollectibleSpawnChance(float spawnChance)
+        {
+            _collectibleSpawnChance = Mathf.Clamp01(spawnChance);
+            Debug.Log($"[EndlessRunnerPlatformController] 🎲 Collectible spawn chance set to: {_collectibleSpawnChance}");
+        }
+        
+        #endregion
+        
         #endregion
         
         #region Private Methods
@@ -164,7 +240,7 @@ namespace EndlessRunner.World
         }
         
         /// <summary>
-        /// Create obstacles on the platform
+        /// Create obstacles on the platform using Factory Manager
         /// </summary>
         private void CreateObstacles()
         {
@@ -186,29 +262,42 @@ namespace EndlessRunner.World
                 
                 if (Random.Range(0f, 1f) < _obstacleSpawnChance)
                 {
-                    GameObject obstaclePrefab = _obstaclePrefabs[Random.Range(0, _obstaclePrefabs.Length)];
-                    GameObject obstacle = Instantiate(obstaclePrefab, spawnPoint.position, spawnPoint.rotation);
-                    
-                    // Always parent to obstacle holder (platform child)
-                    if (_obstacleHolder != null)
+                    // Use Factory Manager if available, otherwise fallback to direct instantiation
+                    if (_factoryManager != null && _factoryManager.IsObstacleFactoryRegistered(ObstacleType.Block))
                     {
-                        obstacle.transform.SetParent(_obstacleHolder.transform);
+                        // Use factory manager
+                        var obstacle = _factoryManager.CreateObstacle(ObstacleType.Block, spawnPoint.position, spawnPoint.rotation);
+                        if (obstacle != null)
+                        {
+                            obstacle.transform.SetParent(_obstacleHolder != null ? _obstacleHolder.transform : transform);
+                        }
                     }
                     else
                     {
-                        // Fallback: parent to platform itself
-                        obstacle.transform.SetParent(transform);
+                        // Fallback to direct instantiation
+                        GameObject obstaclePrefab = _obstaclePrefabs[Random.Range(0, _obstaclePrefabs.Length)];
+                        GameObject obstacle = Instantiate(obstaclePrefab, spawnPoint.position, spawnPoint.rotation);
+                        
+                        // Always parent to obstacle holder (platform child)
+                        if (_obstacleHolder != null)
+                        {
+                            obstacle.transform.SetParent(_obstacleHolder.transform);
+                        }
+                        else
+                        {
+                            // Fallback: parent to platform itself
+                            obstacle.transform.SetParent(transform);
+                        }
+                        
+                        // Publish obstacle spawned event
+                        _eventBus?.Publish(new ObstacleSpawnedEvent(obstacle, spawnPoint.position, "Block", 0f, 0));
                     }
-                    
-                    // Publish obstacle spawned event
-                    _eventBus?.Publish(new ObstacleSpawnedEvent(obstacle, spawnPoint.position, "Block", 0f, 0));
-                    
                 }
             }
         }
         
         /// <summary>
-        /// Create collectibles on the platform
+        /// Create collectibles on the platform using Factory Manager
         /// </summary>
         private void CreateCollectibles()
         {
@@ -230,23 +319,36 @@ namespace EndlessRunner.World
                 
                 if (Random.Range(0f, 1f) < _collectibleSpawnChance)
                 {
-                    GameObject collectiblePrefab = _collectiblePrefabs[Random.Range(0, _collectiblePrefabs.Length)];
-                    GameObject collectible = Instantiate(collectiblePrefab, spawnPoint.position, spawnPoint.rotation);
-                    
-                    // Always parent to collectible holder (platform child)
-                    if (_collectibleHolder != null)
+                    // Use Factory Manager if available, otherwise fallback to direct instantiation
+                    if (_factoryManager != null && _factoryManager.IsCollectibleFactoryRegistered(CollectibleType.Coin))
                     {
-                        collectible.transform.SetParent(_collectibleHolder.transform);
+                        // Use factory manager
+                        var collectible = _factoryManager.CreateCollectible(CollectibleType.Coin, spawnPoint.position, spawnPoint.rotation);
+                        if (collectible != null)
+                        {
+                            collectible.transform.SetParent(_collectibleHolder != null ? _collectibleHolder.transform : transform);
+                        }
                     }
                     else
                     {
-                        // Fallback: parent to platform itself
-                        collectible.transform.SetParent(transform);
+                        // Fallback to direct instantiation
+                        GameObject collectiblePrefab = _collectiblePrefabs[Random.Range(0, _collectiblePrefabs.Length)];
+                        GameObject collectible = Instantiate(collectiblePrefab, spawnPoint.position, spawnPoint.rotation);
+                        
+                        // Always parent to collectible holder (platform child)
+                        if (_collectibleHolder != null)
+                        {
+                            collectible.transform.SetParent(_collectibleHolder.transform);
+                        }
+                        else
+                        {
+                            // Fallback: parent to platform itself
+                            collectible.transform.SetParent(transform);
+                        }
+                        
+                        // Publish collectible spawned event
+                        _eventBus?.Publish(new CollectibleSpawnedEvent(collectible, spawnPoint.position, "Coin", 10, 0));
                     }
-                    
-                    // Publish collectible spawned event
-                    _eventBus?.Publish(new CollectibleSpawnedEvent(collectible, spawnPoint.position, "Coin", 10, 0));
-                    
                 }
             }
         }
