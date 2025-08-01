@@ -6,8 +6,11 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/SampleScene.unity
-    guid: 99c9720ab356a0642a771bea13969a05
+    path: Assets/Scenes/EndlessRunner/EndlessRunner.unity
+    guid: 5574019f2c4180349b65e908210a61df
+  - enabled: 1
+    path: Assets/Scenes/Match3/Match3.unity
+    guid: 6aee540625c1bda41ac232146937a0ab
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_UseUCBPForAssetBundles: 0

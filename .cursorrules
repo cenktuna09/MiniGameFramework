@@ -1,0 +1,47 @@
+#MiniGame Framework Cursor Rules (Extended with ServiceLocator + UI)
+
+global:
+  - Follow SOLID and keep MiniGames decoupled from Core.
+  - All MiniGames must implement +IMiniGame and inherit +MiniGameBase.
+  - Use +ServiceLocator for all core services (EventBus, SaveSystem, ScoreManager).
+  - Always register global services in +GameBootstrap.
+  - Scene-scoped services must be registered in MiniGame.Initialize().
+  - Call +ClearSceneScoped() on scene unload to avoid stale references.
+  - Use EventBus for all cross-module communication.
+  - No direct reference between MiniGames, use GameId + MiniGameLoader.
+
+servicelocator:
+  - Thread-safe singleton required.
+  - Support both instance and factory registration.
+  - Provide ClearSceneScoped() to wipe scene services on unload.
+  - Register global services once in GameBootstrap (EventBus, SaveSystem, ScoreManager).
+  - Match3: Register BoardManager and Match3InputManager in Initialize().
+  - EndlessRunner: Register RunnerStateManager, RunnerInputManager, WorldGenerator in Initialize().
+
+ui:
+  - MainMenu must use +MiniGameLoader.LoadGame(GameId) for navigation.
+  - GameOverUI must subscribe to +OnGameOverEvent via EventBus.
+  - Retry button reloads lastGameId via MiniGameLoader.
+  - MainMenu button loads "MainMenu" scene.
+  - Avoid direct scene loads; always use +MiniGameLoader.
+
+match3:
+  - GameId = "Match3".
+  - Use BoardManager + Match3InputManager scene-scoped services.
+  - EndGame publishes +OnGameOverEvent(GameId).
+
+endlessrunner:
+  - GameId = "EndlessRunner".
+  - Use RunnerStateManager + RunnerInputManager + WorldGenerator scene-scoped services.
+  - EndGame publishes +OnGameOverEvent(GameId).
+
+testing:
+  - ServiceLocator must be mockable for unit tests.
+  - UI event flow tested with mocked EventBus.
+  - Scene load/unload must clear scene-scoped services.
+  - Verify no duplicate EventBus instances exist across MiniGames.
+
+performance:
+  - Use pooling for GameObjects and events.
+  - Minimize GC allocations in EventBus.
+  - Ensure ServiceLocator lookups are O(1).

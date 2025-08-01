@@ -23,9 +23,9 @@ namespace EndlessRunner.Core
     /// <summary>
     /// Main game controller for 3D Endless Runner
     /// Manages all game systems and coordinates gameplay
-    /// Implements IMiniGame interface for framework compliance
+    /// Extends MiniGameBase for framework compliance
     /// </summary>
-    public class EndlessRunnerGame : MonoBehaviour, IMiniGame
+    public class EndlessRunnerGame : MiniGameBase
     {
         #region Serialized Fields
         
@@ -63,32 +63,12 @@ namespace EndlessRunner.Core
         
         #endregion
         
-        #region IMiniGame Interface Implementation
-        
-        /// <summary>
-        /// Unique identifier for this mini-game type
-        /// </summary>
-        public string GameId => "endless_runner_3d";
-        
-        /// <summary>
-        /// Display name for UI and menus
-        /// </summary>
-        public string DisplayName => "3D Endless Runner";
-        
-        /// <summary>
-        /// Current state of the mini-game
-        /// </summary>
-        public GameState CurrentState { get; private set; } = GameState.Uninitialized;
-        
-        /// <summary>
-        /// Event fired when the game state changes
-        /// </summary>
-        public event Action<GameState> OnStateChanged;
+        #region MiniGameBase Overrides
         
         /// <summary>
         /// Check if the game is currently playable
         /// </summary>
-        public bool IsPlayable => CurrentState == GameState.Playing;
+        public override bool IsPlayable => CurrentState == GameState.Playing;
         
         #endregion
         
@@ -104,12 +84,18 @@ namespace EndlessRunner.Core
         
         #region Unity Methods
         
-        private void Awake()
+        protected override void Awake()
         {
+            base.Awake();
             InitializeGame();
         }
         
-        private void OnStart()
+        private void Start()
+        {
+            OnUnityStart();
+        }
+        
+        private void OnUnityStart()
         {
             if (_autoStartGame)
             {
@@ -247,17 +233,14 @@ namespace EndlessRunner.Core
         
         #endregion
         
-        #region IMiniGame Interface Methods
+        #region MiniGameBase Override Methods
         
         /// <summary>
         /// Initialize the mini-game asynchronously
         /// </summary>
-        public async Task InitializeAsync()
+        protected override async Task OnInitializeAsync()
         {
             Debug.Log("[EndlessRunnerGame] 🎮 Initializing Endless Runner Game (Async)...");
-            
-            // Set state to initializing
-            SetGameState(GameState.Initializing);
             
             // Create event bus
             _eventBus = new EventBus();
@@ -273,16 +256,13 @@ namespace EndlessRunner.Core
             
             _isInitialized = true;
             
-            // Set state to ready
-            SetGameState(GameState.Ready);
-            
             Debug.Log("[EndlessRunnerGame] ✅ Game initialization complete (Async)");
         }
         
         /// <summary>
-        /// Start the mini-game (IMiniGame interface)
+        /// Start the mini-game
         /// </summary>
-        public void Start()
+        protected override void OnStart()
         {
             if (!_isInitialized)
             {
@@ -299,41 +279,36 @@ namespace EndlessRunner.Core
             // Don't auto-start the game - wait for user input
             // The game should start in Ready state and wait for first tap
             Debug.Log("[EndlessRunnerGame] 🎯 Game ready - waiting for user input to start");
-            
-            // Set framework state to ready
-            SetGameState(GameState.Ready);
         }
         
         /// <summary>
-        /// Pause the mini-game (IMiniGame interface)
+        /// Pause the mini-game
         /// </summary>
-        public void Pause()
+        protected override void OnPause()
         {
             if (!_isGameRunning) return;
             
             _stateManager?.TransitionTo(RunnerGameState.Paused);
-            SetGameState(GameState.Paused);
             
             Debug.Log("[EndlessRunnerGame] ⏸️ Game paused");
         }
         
         /// <summary>
-        /// Resume the mini-game (IMiniGame interface)
+        /// Resume the mini-game
         /// </summary>
-        public void Resume()
+        protected override void OnResume()
         {
             if (_stateManager?.CurrentState != RunnerGameState.Paused) return;
             
             _stateManager?.TransitionTo(RunnerGameState.Running);
-            SetGameState(GameState.Playing);
             
             Debug.Log("[EndlessRunnerGame] ▶️ Game resumed");
         }
         
         /// <summary>
-        /// End the mini-game (IMiniGame interface)
+        /// End the mini-game
         /// </summary>
-        public void End()
+        protected override void OnEnd()
         {
             if (!_isGameRunning) return;
             
@@ -343,19 +318,14 @@ namespace EndlessRunner.Core
             // Save final score
             _scoreManager?.EndGame();
             
-            // Set framework state
-            SetGameState(GameState.GameOver);
-            
             Debug.Log("[EndlessRunnerGame] 🏁 Game ended");
         }
         
         /// <summary>
-        /// Clean up resources (IMiniGame interface)
+        /// Clean up resources
         /// </summary>
-        public void Cleanup()
+        protected override void OnCleanup()
         {
-            SetGameState(GameState.CleaningUp);
-            
             // Clean up all systems
             CleanupGame();
             
@@ -365,7 +335,7 @@ namespace EndlessRunner.Core
         /// <summary>
         /// Get the current score for this game session
         /// </summary>
-        public int GetCurrentScore()
+        public override int GetCurrentScore()
         {
             return _scoreManager?.CurrentScore ?? 0;
         }
@@ -375,16 +345,12 @@ namespace EndlessRunner.Core
         #region Private Helper Methods
         
         /// <summary>
-        /// Set the game state and fire the OnStateChanged event
+        /// Set the game state using the base class method
         /// </summary>
         /// <param name="newState">New game state</param>
         private void SetGameState(GameState newState)
         {
-            if (CurrentState != newState)
-            {
-                CurrentState = newState;
-                OnStateChanged?.Invoke(newState);
-            }
+            SetState(newState);
         }
         
         #endregion

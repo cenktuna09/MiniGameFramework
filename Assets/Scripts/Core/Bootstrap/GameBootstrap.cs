@@ -16,9 +16,11 @@ namespace MiniGameFramework.Core.Bootstrap
         [SerializeField] private bool _initializeOnAwake = true;
         [SerializeField] private bool _dontDestroyOnLoad = true;
         [SerializeField] private bool _logBootstrapProcess = true;
-
-        [Header("Service References")]
-        // UIManager will auto-initialize itself after services are ready
+        
+        [Header("Mini-Game Loading")]
+        [SerializeField] private bool _autoLoadFirstGame = false;
+        [SerializeField] private string _firstGameToLoad = "EndlessRunner";
+        [SerializeField] private GameObject _loadingScreenPrefab;
 
         // Service instances
         private IEventBus _eventBus;
@@ -44,6 +46,15 @@ namespace MiniGameFramework.Core.Bootstrap
         {
             // Services are ready, UIManager will auto-initialize itself
             LogIfEnabled("Bootstrap complete, UIManager should auto-initialize");
+            
+            // Subscribe to mini-game loading events
+            SubscribeToMiniGameEvents();
+            
+            // Auto-load first game if configured
+            if (_autoLoadFirstGame && !string.IsNullOrEmpty(_firstGameToLoad))
+            {
+                LoadFirstGame();
+            }
         }
 
         #endregion
@@ -115,6 +126,84 @@ namespace MiniGameFramework.Core.Bootstrap
 
         #endregion
 
+        #region Mini-Game Loading
+
+        /// <summary>
+        /// Subscribe to mini-game loading events
+        /// </summary>
+        private void SubscribeToMiniGameEvents()
+        {
+            MiniGameLoader.OnGameLoadingStarted += OnGameLoadingStarted;
+            MiniGameLoader.OnGameLoadingCompleted += OnGameLoadingCompleted;
+            MiniGameLoader.OnGameLoadingFailed += OnGameLoadingFailed;
+        }
+
+        /// <summary>
+        /// Unsubscribe from mini-game loading events
+        /// </summary>
+        private void UnsubscribeFromMiniGameEvents()
+        {
+            MiniGameLoader.OnGameLoadingStarted -= OnGameLoadingStarted;
+            MiniGameLoader.OnGameLoadingCompleted -= OnGameLoadingCompleted;
+            MiniGameLoader.OnGameLoadingFailed -= OnGameLoadingFailed;
+        }
+
+        /// <summary>
+        /// Load the first game as configured in the inspector
+        /// </summary>
+        private void LoadFirstGame()
+        {
+            LogIfEnabled($"Auto-loading first game: {_firstGameToLoad}");
+            
+            if (_loadingScreenPrefab != null)
+            {
+                MiniGameLoader.LoadGameWithLoadingScreen(_firstGameToLoad, _loadingScreenPrefab);
+            }
+            else
+            {
+                MiniGameLoader.LoadGame(_firstGameToLoad);
+            }
+        }
+
+        /// <summary>
+        /// Load a specific mini-game
+        /// </summary>
+        /// <param name="gameId">ID of the game to load</param>
+        public void LoadGame(string gameId)
+        {
+            LogIfEnabled($"Loading game: {gameId}");
+            
+            if (_loadingScreenPrefab != null)
+            {
+                MiniGameLoader.LoadGameWithLoadingScreen(gameId, _loadingScreenPrefab);
+            }
+            else
+            {
+                MiniGameLoader.LoadGame(gameId);
+            }
+        }
+
+        #endregion
+
+        #region Event Handlers
+
+        private void OnGameLoadingStarted(string gameId)
+        {
+            LogIfEnabled($"Game loading started: {gameId}");
+        }
+
+        private void OnGameLoadingCompleted(string gameId)
+        {
+            LogIfEnabled($"Game loading completed: {gameId}");
+        }
+
+        private void OnGameLoadingFailed(string gameId, string error)
+        {
+            LogIfEnabled($"Game loading failed: {gameId} - {error}");
+        }
+
+        #endregion
+
         #region Public API
 
         /// <summary>
@@ -155,6 +244,9 @@ namespace MiniGameFramework.Core.Bootstrap
         private void CleanupServices()
         {
             LogIfEnabled("Cleaning up services...");
+
+            // Unsubscribe from mini-game events
+            UnsubscribeFromMiniGameEvents();
 
             // Clear ServiceLocator
             ServiceLocator.Instance.Clear();

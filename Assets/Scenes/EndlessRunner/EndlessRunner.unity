@@ -194,6 +194,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e4dea0fe18224814b96b1784d2b6f851, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  gameId: endless_runner_3d
+  displayName: 3D Endless Runner
   _autoStartGame: 0
   _enableDebugLogging: 1
 --- !u!1 &22540105
@@ -730,10 +732,8 @@ MonoBehaviour:
   _difficultyMultiplier: 0.05
   _maxSpawnRate: 0.9
   _difficultySpawnCurve:
-    serializedVersion: 2
     m_Curve:
-    - serializedVersion: 3
-      time: 0
+    - time: 0
       value: 0
       inSlope: 0
       outSlope: 0
@@ -741,8 +741,7 @@ MonoBehaviour:
       weightedMode: 0
       inWeight: 0
       outWeight: 0
-    - serializedVersion: 3
-      time: 1
+    - time: 1
       value: 1
       inSlope: 0
       outSlope: 0
@@ -755,6 +754,11 @@ MonoBehaviour:
     m_RotationOrder: 4
   _poolSize: 40
   _initialPoolSize: 20
+  _playerPosition: {x: 0, y: 0, z: 0}
+  _currentDifficulty: 1
+  _lastCollectibleSpawnZ: 0
+  _laneCount: 3
+  _laneWidth: 3
 --- !u!4 &246200740
 Transform:
   m_ObjectHideFlags: 0
@@ -2084,6 +2088,9 @@ MonoBehaviour:
   _initializeOnAwake: 1
   _dontDestroyOnLoad: 1
   _logBootstrapProcess: 1
+  _autoLoadFirstGame: 0
+  _firstGameToLoad: EndlessRunner
+  _loadingScreenPrefab: {fileID: 0}
 --- !u!4 &717724761
 Transform:
   m_ObjectHideFlags: 0
@@ -2140,6 +2147,11 @@ MonoBehaviour:
   _maxSpeed: 30
   _speedIncreaseRate: 0.5
   _maxDifficulty: 10
+  _currentGameState: 0
+  _playerPosition: {x: 0, y: 0, z: 0}
+  _currentSpeed: 0
+  _currentDifficulty: 1
+  _lastGroundSpawnZ: 0
 --- !u!4 &730448857
 Transform:
   m_ObjectHideFlags: 0
@@ -3514,6 +3526,10 @@ MonoBehaviour:
   _testCollectibleSpawning: 1
   _testScoring: 1
   _testPerformance: 1
+  _gameController: {fileID: 0}
+  _isInitialized: 0
+  _testTimer: 0
+  _testPhase: 0
 --- !u!1 &1241686346
 GameObject:
   m_ObjectHideFlags: 0
@@ -3878,10 +3894,8 @@ MonoBehaviour:
   _difficultyMultiplier: 0.1
   _maxSpawnRate: 0.8
   _difficultySpawnCurve:
-    serializedVersion: 2
     m_Curve:
-    - serializedVersion: 3
-      time: 0
+    - time: 0
       value: 0
       inSlope: 0
       outSlope: 0
@@ -3889,8 +3903,7 @@ MonoBehaviour:
       weightedMode: 0
       inWeight: 0
       outWeight: 0
-    - serializedVersion: 3
-      time: 1
+    - time: 1
       value: 1
       inSlope: 0
       outSlope: 0
@@ -3903,6 +3916,11 @@ MonoBehaviour:
     m_RotationOrder: 4
   _poolSize: 30
   _initialPoolSize: 15
+  _playerPosition: {x: 0, y: 0, z: 0}
+  _currentDifficulty: 1
+  _lastObstacleSpawnZ: 0
+  _laneCount: 3
+  _laneWidth: 3
 --- !u!4 &1357294195
 Transform:
   m_ObjectHideFlags: 0
@@ -4140,6 +4158,10 @@ MonoBehaviour:
   _testCollectibleType: 0
   _testSpawnPosition: {x: 0, y: 2, z: 10}
   _testLaneIndex: 1
+  _collectibleManager: {fileID: 0}
+  _isInitialized: 0
+  _testTimer: 0
+  _collectiblesSpawned: 0
 --- !u!1 &1515770330
 GameObject:
   m_ObjectHideFlags: 0
@@ -4299,6 +4321,10 @@ MonoBehaviour:
   _testObstacleType: 0
   _testSpawnPosition: {x: 0, y: 1, z: 10}
   _testLaneIndex: 1
+  _obstacleManager: {fileID: 0}
+  _isInitialized: 0
+  _testTimer: 0
+  _obstaclesSpawned: 0
 --- !u!1 &1539669015
 GameObject:
   m_ObjectHideFlags: 0
@@ -4800,6 +4826,9 @@ MonoBehaviour:
   _worldGenerator: {fileID: 730448856}
   _obstacleManager: {fileID: 1357294194}
   _collectibleManager: {fileID: 246200739}
+  _simulatedPlayerPosition: {x: 0, y: 0, z: 0}
+  _testStartTime: 0
+  _testRunning: 0
 --- !u!1 &1733990250
 GameObject:
   m_ObjectHideFlags: 0
@@ -5501,6 +5530,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _enableTesting: 1
   _logEvents: 1
+  _playerController: {fileID: 0}
+  _isInitialized: 0
 --- !u!1 &1926499152
 GameObject:
   m_ObjectHideFlags: 0

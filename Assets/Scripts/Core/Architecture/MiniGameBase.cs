@@ -1,6 +1,8 @@
 using System;
 using System.Threading.Tasks;
 using UnityEngine;
+using Core.Events;
+using Core.DI;
 
 namespace Core.Architecture
 {
@@ -154,6 +156,14 @@ namespace Core.Architecture
         /// </summary>
         protected virtual void OnEnd()
         {
+            // Publish game over event
+            var eventBus = ServiceLocator.Instance.Resolve<IEventBus>();
+            if (eventBus != null)
+            {
+                var gameOverEvent = new OnGameOverEvent(GameId, GetCurrentScore(), "GameOver", Time.time);
+                eventBus.Publish(gameOverEvent);
+                Debug.Log($"[{GameId}] Game over event published");
+            }
         }
         
         /// <summary>
