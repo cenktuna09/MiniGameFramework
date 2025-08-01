@@ -9,6 +9,7 @@ namespace Core.Architecture
     /// <summary>
     /// Base class for all mini-games in the framework.
     /// Provides common functionality and enforces the IMiniGame contract.
+    /// Supports scene-scoped services and lifecycle management.
     /// </summary>
     public abstract class MiniGameBase : MonoBehaviour, IMiniGame
     {
@@ -45,8 +46,13 @@ namespace Core.Architecture
             
             try
             {
+                // Clear any existing scene services before initialization
+                ServiceLocator.Instance.ClearSceneServices();
+                
                 await OnInitializeAsync();
                 SetState(GameState.Ready);
+                
+                Debug.Log($"[{GameId}] Mini-game initialized successfully");
             }
             catch (Exception e)
             {
@@ -100,27 +106,34 @@ namespace Core.Architecture
                 return;
             }
             
-            SetState(GameState.GameOver);
+            SetState(GameState.CleaningUp);
             OnEnd();
+            SetState(GameState.Uninitialized);
         }
         
         public virtual void Cleanup()
         {
             if (currentState == GameState.CleaningUp)
             {
-                Debug.LogWarning($"[{GameId}] Cleanup called when already cleaning up");
+                Debug.LogWarning($"[{GameId}] Cleanup already in progress");
                 return;
             }
             
             SetState(GameState.CleaningUp);
             OnCleanup();
+            
+            // Clear scene-scoped services
+            ServiceLocator.Instance.ClearSceneServices();
+            
+            SetState(GameState.Uninitialized);
+            Debug.Log($"[{GameId}] Mini-game cleanup completed");
         }
         
         public abstract int GetCurrentScore();
         
         #endregion
         
-        #region Protected Methods for Subclasses
+        #region Protected Virtual Methods
         
         /// <summary>
         /// Called during initialization. Override to set up game-specific systems.
@@ -156,7 +169,7 @@ namespace Core.Architecture
         /// </summary>
         protected virtual void OnEnd()
         {
-            // Publish game over event
+            // Publish game over event using framework EventBus
             var eventBus = ServiceLocator.Instance.Resolve<IEventBus>();
             if (eventBus != null)
             {
@@ -171,6 +184,63 @@ namespace Core.Architecture
         /// </summary>
         protected virtual void OnCleanup()
         {
+        }
+        
+        #endregion
+        
+        #region Service Management
+        
+        /// <summary>
+        /// Register a scene-scoped service for this mini-game.
+        /// </summary>
+        /// <typeparam name="T">The type of service to register.</typeparam>
+        /// <param name="service">The service instance.</param>
+        protected void RegisterSceneService<T>(T service) where T : class
+        {
+            ServiceLocator.Instance.RegisterScene(service);
+            Debug.Log($"[{GameId}] Registered scene service: {typeof(T).Name}");
+        }
+        
+        /// <summary>
+        /// Register a scene-scoped factory for this mini-game.
+        /// </summary>
+        /// <typeparam name="T">The type of service to register.</typeparam>
+        /// <param name="factory">The factory function.</param>
+        protected void RegisterSceneFactory<T>(Func<T> factory) where T : class
+        {
+            ServiceLocator.Instance.RegisterScene(factory);
+            Debug.Log($"[{GameId}] Registered scene factory: {typeof(T).Name}");
+        }
+        
+        /// <summary>
+        /// Resolve a service (scene-scoped first, then global).
+        /// </summary>
+        /// <typeparam name="T">The type of service to resolve.</typeparam>
+        /// <returns>The service instance, or null if not found.</returns>
+        protected T ResolveService<T>() where T : class
+        {
+            return ServiceLocator.Instance.Resolve<T>();
+        }
+        
+        /// <summary>
+        /// Resolve a service with fallback creation if not found.
+        /// </summary>
+        /// <typeparam name="T">The type of service to resolve.</typeparam>
+        /// <param name="fallbackFactory">Factory to create service if not found.</param>
+        /// <returns>The service instance.</returns>
+        protected T ResolveOrCreateService<T>(Func<T> fallbackFactory) where T : class
+        {
+            return ServiceLocator.Instance.ResolveOrCreate(fallbackFactory);
+        }
+        
+        /// <summary>
+        /// Check if a service is registered.
+        /// </summary>
+        /// <typeparam name="T">The type of service to check.</typeparam>
+        /// <returns>True if the service is registered, false otherwise.</returns>
+        protected bool IsServiceRegistered<T>() where T : class
+        {
+            return ServiceLocator.Instance.IsRegistered<T>();
         }
         
         #endregion
