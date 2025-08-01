@@ -168,21 +168,7 @@ namespace EndlessRunner.ErrorHandling
             Debug.Log("[RunnerErrorHandler] ✅ Player controller validated successfully");
             return true;
         }
-        
-        /// <summary>
-        /// Validate world generator
-        /// </summary>
-        public bool ValidateWorldGenerator(WorldGenerator worldGenerator)
-        {
-            if (worldGenerator == null)
-            {
-                LogError("WorldGenerator is null");
-                return false;
-            }
-            
-            Debug.Log("[RunnerErrorHandler] ✅ World generator validated successfully");
-            return true;
-        }
+
         
         /// <summary>
         /// Get runner-specific error stats

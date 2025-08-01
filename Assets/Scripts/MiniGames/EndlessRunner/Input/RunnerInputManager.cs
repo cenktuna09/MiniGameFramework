@@ -3,6 +3,9 @@ using Core.Common.InputManagement;
 using Core.Events;
 using Core.Architecture;
 using EndlessRunner.Events;
+using EndlessRunner.StateManagement;
+using Core.Common.StateManagement;
+using UnityEngine.InputSystem;
 
 namespace EndlessRunner.Input
 {
@@ -40,8 +43,13 @@ namespace EndlessRunner.Input
         private float _lastJumpTime = 0f;
         private float _lastSlideTime = 0f;
         private float _lastDashTime = 0f;
+        private float _lastLateralMovementTime = 0f; // Add lateral movement cooldown
         private bool _isDoubleJumpAvailable = true;
         private bool _isDoubleSlideAvailable = true;
+        
+        // Game state tracking
+        private bool _gameStarted = false;
+        private RunnerGameState _currentGameState = RunnerGameState.Ready;
         #endregion
         
         #region Public Properties
@@ -85,6 +93,12 @@ namespace EndlessRunner.Input
             var inputResult = inputHandler?.ProcessInput() ?? ProcessInputDirectly();
             if (inputResult.HasInput)
             {
+                // Handle first tap to start the game
+                if (!_gameStarted && inputResult.InputStarted)
+                {
+                    StartGame();
+                }
+                
                 var command = CreateCommandFromInput(inputResult);
                 HandleInputCommand(command);
             }
@@ -108,11 +122,57 @@ namespace EndlessRunner.Input
             _jumpPressed = false;
             _slidePressed = false;
             _dashPressed = false;
+            _lastJumpTime = 0f;
+            _lastSlideTime = 0f;
+            _lastDashTime = 0f;
+            _lastLateralMovementTime = 0f; // Reset lateral movement cooldown
             _isDoubleJumpAvailable = true;
             _isDoubleSlideAvailable = true;
             isDragging = false;
             
             Debug.Log("[RunnerInputManager] 🔄 Input state reset");
+        }
+        
+        /// <summary>
+        /// Start the game on first tap
+        /// </summary>
+        private void StartGame()
+        {
+            if (_gameStarted) return;
+            
+            _gameStarted = true;
+            _currentGameState = RunnerGameState.Running;
+            
+            // Publish game started event
+            var gameStartedEvent = new StateChangedEvent<RunnerGameState>(RunnerGameState.Ready, RunnerGameState.Running);
+            _eventBus?.Publish(gameStartedEvent);
+            
+            Debug.Log("[RunnerInputManager] 🚀 Game started on first tap!");
+        }
+        
+        /// <summary>
+        /// Subscribe to game state changes
+        /// </summary>
+        private void SubscribeToGameState()
+        {
+            _eventBus?.Subscribe<StateChangedEvent<RunnerGameState>>(OnGameStateChanged);
+        }
+        
+        /// <summary>
+        /// Handle game state changes
+        /// </summary>
+        private void OnGameStateChanged(StateChangedEvent<RunnerGameState> stateEvent)
+        {
+            _currentGameState = stateEvent.NewState;
+            
+            if (stateEvent.NewState == RunnerGameState.GameOver)
+            {
+                // Reset game state when game over
+                _gameStarted = false;
+                ResetInputState();
+            }
+            
+            Debug.Log($"[RunnerInputManager] 🔄 Game state changed to: {stateEvent.NewState}");
         }
         #endregion
         
@@ -149,6 +209,9 @@ namespace EndlessRunner.Input
                     Debug.LogWarning("[RunnerInputManager] ⚠️ No main camera found!");
                 }
             }
+            
+            // Subscribe to game state changes
+            SubscribeToGameState();
         }
         
         /// <summary>
@@ -217,14 +280,20 @@ namespace EndlessRunner.Input
             {
                 currentMousePosition = UnityEngine.Input.mousePosition;
                 var worldPos = GetWorldPosition(currentMousePosition);
+                var lastWorldPos = GetWorldPosition(lastMousePosition);
                 
-                result.MovementDetected = true;
-                result.HasInput = true;
-                result.CurrentPosition = worldPos;
-                result.MovementDelta = worldPos - GetWorldPosition(lastMousePosition);
-                
-                // Publish continuous movement event
-                _eventBus?.Publish(new PlayerMovementEvent(worldPos, result.MovementDelta, 0f, 0f));
+                // Only process movement if there's significant horizontal movement
+                var movementDelta = worldPos - lastWorldPos;
+                if (Mathf.Abs(movementDelta.x) > _inputThreshold)
+                {
+                    result.MovementDetected = true;
+                    result.HasInput = true;
+                    result.CurrentPosition = worldPos;
+                    result.MovementDelta = movementDelta;
+                    
+                    // Publish continuous movement event
+                    _eventBus?.Publish(new PlayerMovementEvent(worldPos, movementDelta, 0f, 0f));
+                }
             }
             
             return result;
@@ -237,12 +306,18 @@ namespace EndlessRunner.Input
         {
             if (mainCamera == null) return Vector3.zero;
             
+            // Get player's current Z position for consistent world coordinates
+            var playerController = Object.FindFirstObjectByType<EndlessRunner.Player.PlayerController>();
+            float playerZ = playerController != null ? playerController.transform.position.z : 0f;
+            
             var ray = mainCamera.ScreenPointToRay(screenPosition);
-            var plane = new Plane(Vector3.up, Vector3.zero);
+            var plane = new Plane(Vector3.up, new Vector3(0f, 0f, playerZ));
             
             if (plane.Raycast(ray, out float distance))
             {
-                return ray.GetPoint(distance);
+                var worldPoint = ray.GetPoint(distance);
+                // Only use X and Z coordinates, ignore Y (vertical) movement for lateral input
+                return new Vector3(worldPoint.x, 0f, worldPoint.z);
             }
             
             return Vector3.zero;
@@ -266,8 +341,12 @@ namespace EndlessRunner.Input
                 
                 _jumpPressed = true;
                 
+                // Get player's actual position for jump event
+                var playerController = Object.FindFirstObjectByType<EndlessRunner.Player.PlayerController>();
+                Vector3 playerPosition = playerController != null ? playerController.transform.position : Vector3.zero;
+                
                 // Publish jump event
-                var jumpEvent = new PlayerJumpEvent(inputResult.CurrentPosition, 0f, 0f, isDoubleJump);
+                var jumpEvent = new PlayerJumpEvent(playerPosition, 0f, 0f, isDoubleJump);
                 _eventBus.Publish(jumpEvent);
                 
                 return new RunnerInputCommand(
@@ -289,8 +368,12 @@ namespace EndlessRunner.Input
                 
                 _slidePressed = true;
                 
+                // Get player's actual position for slide event
+                var playerController = Object.FindFirstObjectByType<EndlessRunner.Player.PlayerController>();
+                Vector3 playerPosition = playerController != null ? playerController.transform.position : Vector3.zero;
+                
                 // Publish slide event
-                var slideEvent = new PlayerSlideEvent(inputResult.CurrentPosition, 0f, 0f, true);
+                var slideEvent = new PlayerSlideEvent(playerPosition, 0f, 0f, true);
                 _eventBus.Publish(slideEvent);
                 
                 return new RunnerInputCommand(
@@ -301,20 +384,40 @@ namespace EndlessRunner.Input
             
             if (inputResult.MovementDetected)
             {
-                // Calculate lateral input based on horizontal movement
+                // Calculate lateral input based on horizontal movement only
                 var lateralDelta = inputResult.MovementDelta.x * movementSensitivity;
                 _lateralInput = Mathf.Clamp(lateralDelta, -1f, 1f);
                 
+                // Only process lateral movement if horizontal movement is significant
                 if (Mathf.Abs(_lateralInput) > _inputThreshold)
                 {
-                    // Publish lateral movement event
-                    var lateralEvent = new PlayerLateralMovementEvent(_lateralInput, inputResult.CurrentPosition, 0f);
-                    _eventBus.Publish(lateralEvent);
+                    // Add cooldown for lateral movement to prevent multiple lane changes
+                    float currentTime = Time.time;
+                    float lateralCooldown = 0.3f; // 300ms cooldown between lane changes
                     
-                    return new RunnerInputCommand(
-                        RunnerInputType.LateralMovement,
-                        new RunnerInputData { LateralInput = _lateralInput }
-                    );
+                    if (currentTime - _lastLateralMovementTime > lateralCooldown)
+                    {
+                        _lastLateralMovementTime = currentTime;
+                        
+                        // Get player's actual position for lateral movement event
+                        var playerController = Object.FindFirstObjectByType<EndlessRunner.Player.PlayerController>();
+                        Vector3 playerPosition = playerController != null ? playerController.transform.position : Vector3.zero;
+                        
+                        // Publish lateral movement event
+                        var lateralEvent = new PlayerLateralMovementEvent(_lateralInput, playerPosition, 0f);
+                        _eventBus.Publish(lateralEvent);
+                        
+                        Debug.Log($"[RunnerInputManager] 🛣️ Lateral movement: {_lateralInput:F2} (cooldown applied)");
+                        
+                        return new RunnerInputCommand(
+                            RunnerInputType.LateralMovement,
+                            new RunnerInputData { LateralInput = _lateralInput }
+                        );
+                    }
+                    else
+                    {
+                        //Debug.Log($"[RunnerInputManager] ⏳ Lateral movement on cooldown: {lateralCooldown - (currentTime - _lastLateralMovementTime):F2}s remaining");
+                    }
                 }
             }
             

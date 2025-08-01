@@ -18,21 +18,19 @@ using EndlessRunner.Events;
 using EndlessRunner.Config;
 using EndlessRunner.Player;
 using EndlessRunner.World;
-using EndlessRunner.Obstacles;
-using EndlessRunner.Collectibles;
-
 namespace EndlessRunner.Core
 {
     /// <summary>
     /// Main game controller for 3D Endless Runner
     /// Manages all game systems and coordinates gameplay
+    /// Implements IMiniGame interface for framework compliance
     /// </summary>
-    public class EndlessRunnerGame : MonoBehaviour
+    public class EndlessRunnerGame : MonoBehaviour, IMiniGame
     {
         #region Serialized Fields
         
         [Header("Game Systems")]
-        [SerializeField] private bool _autoStartGame = true;
+        [SerializeField] private bool _autoStartGame = false; // Changed to false - game starts on first tap
         [SerializeField] private bool _enableDebugLogging = true;
         
         #endregion
@@ -49,9 +47,6 @@ namespace EndlessRunner.Core
         
         // Game systems
         private PlayerController _playerController;
-        private WorldGenerator _worldGenerator;
-        private ObstacleManager _obstacleManager;
-        private CollectibleManager _collectibleManager;
         
         // Game state
         private bool _isInitialized = false;
@@ -68,6 +63,35 @@ namespace EndlessRunner.Core
         
         #endregion
         
+        #region IMiniGame Interface Implementation
+        
+        /// <summary>
+        /// Unique identifier for this mini-game type
+        /// </summary>
+        public string GameId => "endless_runner_3d";
+        
+        /// <summary>
+        /// Display name for UI and menus
+        /// </summary>
+        public string DisplayName => "3D Endless Runner";
+        
+        /// <summary>
+        /// Current state of the mini-game
+        /// </summary>
+        public GameState CurrentState { get; private set; } = GameState.Uninitialized;
+        
+        /// <summary>
+        /// Event fired when the game state changes
+        /// </summary>
+        public event Action<GameState> OnStateChanged;
+        
+        /// <summary>
+        /// Check if the game is currently playable
+        /// </summary>
+        public bool IsPlayable => CurrentState == GameState.Playing;
+        
+        #endregion
+        
         #region Public Properties
         
         public bool IsGameRunning => _isGameRunning;
@@ -75,7 +99,6 @@ namespace EndlessRunner.Core
         public RunnerStateManager StateManager => _stateManager;
         public RunnerScoreManager ScoreManager => _scoreManager;
         public PlayerController PlayerController => _playerController;
-        public WorldGenerator WorldGenerator => _worldGenerator;
         
         #endregion
         
@@ -86,7 +109,7 @@ namespace EndlessRunner.Core
             InitializeGame();
         }
         
-        private void Start()
+        private void OnStart()
         {
             if (_autoStartGame)
             {
@@ -96,6 +119,9 @@ namespace EndlessRunner.Core
         
         private void Update()
         {
+            // Always process input, even when game is not running (for start input)
+            _inputManager?.ProcessInput();
+            
             if (_isGameRunning)
             {
                 UpdateGameTime();
@@ -212,14 +238,153 @@ namespace EndlessRunner.Core
             _scoreManager?.ResetScore();
             _inputManager?.ResetInputState();
             _playerController?.ResetPlayer();
-            _worldGenerator?.ResetGenerator();
-            _obstacleManager?.ResetManager();
-            _collectibleManager?.ResetManager();
             
             // Unlock input after reset
             _inputManager?.UnlockInput();
             
             Debug.Log("[EndlessRunnerGame] 🔄 Game state reset");
+        }
+        
+        #endregion
+        
+        #region IMiniGame Interface Methods
+        
+        /// <summary>
+        /// Initialize the mini-game asynchronously
+        /// </summary>
+        public async Task InitializeAsync()
+        {
+            Debug.Log("[EndlessRunnerGame] 🎮 Initializing Endless Runner Game (Async)...");
+            
+            // Set state to initializing
+            SetGameState(GameState.Initializing);
+            
+            // Create event bus
+            _eventBus = new EventBus();
+            
+            // Initialize core systems
+            InitializeCoreSystems();
+            
+            // Find game systems
+            FindGameSystems();
+            
+            // Subscribe to events
+            SubscribeToEvents();
+            
+            _isInitialized = true;
+            
+            // Set state to ready
+            SetGameState(GameState.Ready);
+            
+            Debug.Log("[EndlessRunnerGame] ✅ Game initialization complete (Async)");
+        }
+        
+        /// <summary>
+        /// Start the mini-game (IMiniGame interface)
+        /// </summary>
+        public void Start()
+        {
+            if (!_isInitialized)
+            {
+                Debug.LogError("[EndlessRunnerGame] ❌ Game not initialized!");
+                return;
+            }
+            
+            if (_isGameRunning)
+            {
+                Debug.LogWarning("[EndlessRunnerGame] ⚠️ Game already running!");
+                return;
+            }
+            
+            // Don't auto-start the game - wait for user input
+            // The game should start in Ready state and wait for first tap
+            Debug.Log("[EndlessRunnerGame] 🎯 Game ready - waiting for user input to start");
+            
+            // Set framework state to ready
+            SetGameState(GameState.Ready);
+        }
+        
+        /// <summary>
+        /// Pause the mini-game (IMiniGame interface)
+        /// </summary>
+        public void Pause()
+        {
+            if (!_isGameRunning) return;
+            
+            _stateManager?.TransitionTo(RunnerGameState.Paused);
+            SetGameState(GameState.Paused);
+            
+            Debug.Log("[EndlessRunnerGame] ⏸️ Game paused");
+        }
+        
+        /// <summary>
+        /// Resume the mini-game (IMiniGame interface)
+        /// </summary>
+        public void Resume()
+        {
+            if (_stateManager?.CurrentState != RunnerGameState.Paused) return;
+            
+            _stateManager?.TransitionTo(RunnerGameState.Running);
+            SetGameState(GameState.Playing);
+            
+            Debug.Log("[EndlessRunnerGame] ▶️ Game resumed");
+        }
+        
+        /// <summary>
+        /// End the mini-game (IMiniGame interface)
+        /// </summary>
+        public void End()
+        {
+            if (!_isGameRunning) return;
+            
+            _isGameRunning = false;
+            _stateManager?.TransitionTo(RunnerGameState.GameOver);
+            
+            // Save final score
+            _scoreManager?.EndGame();
+            
+            // Set framework state
+            SetGameState(GameState.GameOver);
+            
+            Debug.Log("[EndlessRunnerGame] 🏁 Game ended");
+        }
+        
+        /// <summary>
+        /// Clean up resources (IMiniGame interface)
+        /// </summary>
+        public void Cleanup()
+        {
+            SetGameState(GameState.CleaningUp);
+            
+            // Clean up all systems
+            CleanupGame();
+            
+            Debug.Log("[EndlessRunnerGame] 🧹 Cleanup completed");
+        }
+        
+        /// <summary>
+        /// Get the current score for this game session
+        /// </summary>
+        public int GetCurrentScore()
+        {
+            return _scoreManager?.CurrentScore ?? 0;
+        }
+        
+        #endregion
+        
+        #region Private Helper Methods
+        
+        /// <summary>
+        /// Set the game state and fire the OnStateChanged event
+        /// </summary>
+        /// <param name="newState">New game state</param>
+        private void SetGameState(GameState newState)
+        {
+            if (CurrentState != newState)
+            {
+                CurrentState = newState;
+                OnStateChanged?.Invoke(newState);
+            }
         }
         
         #endregion
@@ -235,6 +400,9 @@ namespace EndlessRunner.Core
             
             // Create event bus
             _eventBus = new EventBus();
+            
+            // Register event bus with ServiceLocator
+            ServiceLocator.Instance.Register<IEventBus>(_eventBus);
             
             // Initialize core systems
             InitializeCoreSystems();
@@ -285,25 +453,12 @@ namespace EndlessRunner.Core
                 _playerController.Initialize(_eventBus);
             }
             
-            // Find world generator
-            _worldGenerator = FindFirstObjectByType<WorldGenerator>();
-            if (_worldGenerator != null)
-            {
-                _worldGenerator.Initialize(_eventBus);
-            }
             
-            // Find obstacle manager
-            _obstacleManager = FindFirstObjectByType<ObstacleManager>();
-            if (_obstacleManager != null)
+            // Find scroll controller
+            var scrollController = FindFirstObjectByType<EndlessRunnerScrollController>();
+            if (scrollController != null)
             {
-                _obstacleManager.Initialize(_eventBus);
-            }
-            
-            // Find collectible manager
-            _collectibleManager = FindFirstObjectByType<CollectibleManager>();
-            if (_collectibleManager != null)
-            {
-                _collectibleManager.Initialize(_eventBus);
+                scrollController.Initialize(_eventBus);
             }
             
             Debug.Log("[EndlessRunnerGame] ✅ Game systems found");
@@ -344,7 +499,7 @@ namespace EndlessRunner.Core
             _playerDeathSubscription = _eventBus.Subscribe<PlayerDeathEvent>(OnPlayerDeath);
             
             // Subscribe to score events
-            _scoreUpdateSubscription = _eventBus.Subscribe<EndlessRunner.Events.ScoreChangedEvent>(OnScoreUpdated);
+            _scoreUpdateSubscription = _eventBus.Subscribe<Events.ScoreChangedEvent>(OnScoreUpdated);
             
             // Subscribe to collectible events
             _collectibleCollectedSubscription = _eventBus.Subscribe<CollectibleCollectedEvent>(OnCollectibleCollected);
@@ -371,9 +526,6 @@ namespace EndlessRunner.Core
         /// </summary>
         private void UpdateGameSystems()
         {
-            // Update input
-            _inputManager?.ProcessInput();
-            
             // Update performance monitoring
             _performanceManager?.UpdateMonitoring();
             

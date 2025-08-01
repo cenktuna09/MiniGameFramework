@@ -2,14 +2,98 @@ using UnityEngine;
 using Core.Events;
 using Core.Architecture;
 using EndlessRunner.Events;
+using EndlessRunner.StateManagement;
+using Core.Common.StateManagement;
+using System;
 
 namespace EndlessRunner.Player
 {
     /// <summary>
+    /// Interface for player controller functionality
+    /// Provides abstraction for player movement and state
+    /// </summary>
+    public interface IPlayerController
+    {
+        /// <summary>
+        /// Current position of the player
+        /// </summary>
+        Vector3 Position { get; }
+        
+        /// <summary>
+        /// Whether the player is currently grounded
+        /// </summary>
+        bool IsGrounded { get; }
+        
+        /// <summary>
+        /// Whether the player is currently dead
+        /// </summary>
+        bool IsDead { get; }
+        
+        /// <summary>
+        /// Current health of the player
+        /// </summary>
+        int CurrentHealth { get; }
+        
+        /// <summary>
+        /// Maximum health of the player
+        /// </summary>
+        int MaxHealth { get; }
+        
+        /// <summary>
+        /// Make the player jump
+        /// </summary>
+        void Jump();
+        
+        /// <summary>
+        /// Make the player slide
+        /// </summary>
+        void Slide();
+        
+        /// <summary>
+        /// Move the player horizontally
+        /// </summary>
+        /// <param name="direction">Direction to move (-1 for left, 1 for right)</param>
+        void MoveHorizontal(float direction);
+        
+        /// <summary>
+        /// Take damage
+        /// </summary>
+        /// <param name="damageAmount">Amount of damage to take</param>
+        void TakeDamage(int damageAmount);
+        
+        /// <summary>
+        /// Reset the player to initial state
+        /// </summary>
+        void ResetPlayer();
+        
+        /// <summary>
+        /// Initialize the player controller
+        /// </summary>
+        /// <param name="eventBus">Event bus for communication</param>
+        void Initialize(IEventBus eventBus);
+        
+        /// <summary>
+        /// Event fired when player position changes
+        /// </summary>
+        event Action<Vector3> OnPositionChanged;
+        
+        /// <summary>
+        /// Event fired when player health changes
+        /// </summary>
+        event Action<int, int> OnHealthChanged;
+        
+        /// <summary>
+        /// Event fired when player dies
+        /// </summary>
+        event Action<string> OnPlayerDeath;
+    }
+    
+    /// <summary>
     /// Player controller for 3D Endless Runner
     /// Handles movement, jumping, sliding, and physics
+    /// Implements IPlayerController interface for framework compliance
     /// </summary>
-    public class PlayerController : MonoBehaviour
+    public class PlayerController : MonoBehaviour, IPlayerController
     {
         #region Private Fields
         [Header("Movement Settings")]
@@ -45,6 +129,11 @@ namespace EndlessRunner.Player
         // Events
         private IEventBus _eventBus;
         private System.IDisposable _inputSubscription;
+        
+        // Interface events
+        public event Action<Vector3> OnPositionChanged;
+        public event Action<int, int> OnHealthChanged;
+        public event Action<string> OnPlayerDeath;
         #endregion
         
         #region Public Properties
@@ -56,6 +145,10 @@ namespace EndlessRunner.Player
         public int CurrentLane => _currentLane;
         public float ForwardSpeed => _forwardSpeed;
         public float LateralSpeed => _lateralSpeed;
+        
+        // Interface properties
+        public Vector3 Position => transform.position;
+        public int MaxHealth => _maxHealth;
         #endregion
         
         #region Unity Methods
@@ -104,38 +197,51 @@ namespace EndlessRunner.Player
         
         private void OnTriggerEnter(Collider other)
         {
+            Debug.Log($"[PlayerController] 🎯 Trigger entered with: {other.name} (Tag: {other.tag})");
             HandleCollision(other, true);
         }
         
         private void OnCollisionEnter(Collision collision)
         {
+            //Debug.Log($"[PlayerController] 💥 Collision entered with: {collision.collider.name} (Tag: {collision.collider.tag})");
             HandleCollision(collision.collider, false);
         }
         
         private void HandleCollision(Collider other, bool isTrigger)
         {
-            if (other == null) return;
+            if (other == null) 
+            {
+                Debug.LogWarning("[PlayerController] ⚠️ Collision with null collider!");
+                return;
+            }
+            
+            Debug.Log($"[PlayerController] 🔍 Handling collision with: {other.name} (Tag: {other.tag}, IsTrigger: {isTrigger})");
             
             switch (other.tag)
             {
                 case "Collectible":
+                    Debug.Log("[PlayerController] 💰 Collectible collision detected");
                     HandleCollectibleCollision(other.gameObject);
                     break;
                     
                 case "Obstacle":
+                    Debug.Log("[PlayerController] 🚧 Obstacle collision detected");
                     HandleObstacleCollision(other.gameObject, isTrigger);
                     break;
                     
                 case "Ground":
+                    Debug.Log("[PlayerController] 🌍 Ground collision detected");
                     HandleGroundCollision(other.gameObject);
+                    break;
+                    
+                default:
+                    Debug.LogWarning($"[PlayerController] ⚠️ Unknown collision tag: {other.tag}");
                     break;
             }
         }
         
         private void HandleCollectibleCollision(GameObject collectible)
-        {
-            Debug.Log($"[PlayerController] 💰 Collectible collected: {collectible.name}");
-            
+        {            
             // Publish collectible collected event
             if (_eventBus != null)
             {
@@ -188,21 +294,41 @@ namespace EndlessRunner.Player
         }
         
         /// <summary>
-        /// Move player laterally (left/right)
+        /// Move player laterally (left/right) - one lane at a time
         /// </summary>
         public void MoveLaterally(float direction)
         {
             if (_isSliding || _isDead) return;
             
-            // Calculate target lane based on direction
-            int targetLane = Mathf.Clamp(_currentLane + Mathf.RoundToInt(direction), 0, 2);
+            // Only move one lane at a time based on direction sign
+            int laneChange = 0;
+            if (direction > 0.1f) // Right movement
+            {
+                laneChange = 1;
+            }
+            else if (direction < -0.1f) // Left movement
+            {
+                laneChange = -1;
+            }
+            
+            // Calculate target lane (one step at a time)
+            int targetLane = Mathf.Clamp(_currentLane + laneChange, 0, 2);
             if (targetLane != _currentLane)
             {
                 _currentLane = targetLane;
                 _targetLaneX = (_currentLane - 1) * _laneWidth; // -1 for left, 0 for center, 1 for right
                 
-                Debug.Log($"[PlayerController] 🛣️ Moving to lane: {_currentLane} (X: {_targetLaneX})");
+                Debug.Log($"[PlayerController] 🛣️ Moving to lane: {_currentLane} (X: {_targetLaneX}) - Direction: {direction:F2}");
             }
+        }
+        
+        /// <summary>
+        /// Move the player horizontally (interface method)
+        /// </summary>
+        /// <param name="direction">Direction to move (-1 for left, 1 for right)</param>
+        public void MoveHorizontal(float direction)
+        {
+            MoveLaterally(direction);
         }
         
         /// <summary>
@@ -404,19 +530,20 @@ namespace EndlessRunner.Player
         }
         
         /// <summary>
-        /// Apply forward movement
+        /// Apply forward movement (CoreMechanics: Player should only move laterally)
         /// </summary>
         private void ApplyForwardMovement()
         {
             if (_isDead) return;
             
-            Vector3 forwardMovement = Vector3.forward * _forwardSpeed * Time.deltaTime;
-            transform.Translate(forwardMovement);
+            // CoreMechanics: Player stays in place, only moves left/right
+            // Forward movement is handled by world generation (moving world approach)
+            // Player Z position should remain constant
             
-            // Publish movement event
+            // Publish player position for world generation
             if (_eventBus != null)
             {
-                var movementEvent = new PlayerMovementEvent(transform.position, forwardMovement, _forwardSpeed, 0f);
+                var movementEvent = new PlayerMovementEvent(transform.position, Vector3.zero, 0f, 0f);
                 _eventBus.Publish(movementEvent);
             }
         }
@@ -532,7 +659,14 @@ namespace EndlessRunner.Player
             {
                 var gameEndedEvent = new GameEndedEvent(Time.time, 0f, 0, "PlayerDeath");
                 _eventBus.Publish(gameEndedEvent);
+                
+                // Publish game over state change
+                var stateChangedEvent = new StateChangedEvent<RunnerGameState>(RunnerGameState.Running, RunnerGameState.GameOver);
+                _eventBus.Publish(stateChangedEvent);
             }
+            
+            // Trigger death event
+            OnPlayerDeath?.Invoke("PlayerDeath");
         }
         #endregion
     }
