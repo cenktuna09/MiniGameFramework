@@ -128,7 +128,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8092194}
-  - component: {fileID: 8092193}
+  - component: {fileID: 8092195}
   m_Layer: 0
   m_Name: EndlessRunnerGame
   m_TagString: Untagged
@@ -136,20 +136,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &8092193
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8092192}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e4dea0fe18224814b96b1784d2b6f851, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _autoStartGame: 1
-  _enableDebugLogging: 1
 --- !u!4 &8092194
 Transform:
   m_ObjectHideFlags: 0
@@ -165,6 +151,20 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8092195
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8092192}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e4dea0fe18224814b96b1784d2b6f851, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _autoStartGame: 1
+  _enableDebugLogging: 1
 --- !u!1 &246200738
 GameObject:
   m_ObjectHideFlags: 0
@@ -430,7 +430,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 730448855}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fafd10e886595a3468bfeae6aa618d90, type: 3}
   m_Name: 
@@ -953,7 +953,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1702860975}
   - component: {fileID: 1702860976}
-  - component: {fileID: 1702860977}
   m_Layer: 0
   m_Name: World
   m_TagString: Untagged
@@ -991,32 +990,6 @@ MonoBehaviour:
   _enableTesting: 1
   _logEvents: 1
   _autoGenerateChunks: 1
---- !u!114 &1702860977
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1702860974}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fafd10e886595a3468bfeae6aa618d90, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _chunkLength: 50
-  _maxChunks: 5
-  _obstacleSpawnRate: 0.3
-  _collectibleSpawnRate: 0.5
-  _laneCount: 3
-  _laneWidth: 3
-  _despawnDistance: 100
-  _difficultyIncreaseRate: 0.1
-  _maxDifficulty: 10
-  _speedIncreaseRate: 0.5
-  _maxSpeed: 30
-  _groundPoolSize: 10
-  _obstaclePoolSize: 20
-  _collectiblePoolSize: 15
 --- !u!1 &1827842108
 GameObject:
   m_ObjectHideFlags: 0
@@ -1146,6 +1119,8 @@ MonoBehaviour:
   _lateralSpeed: 5
   _jumpForce: 8
   _slideDuration: 1
+  _slideDownForce: 5
+  _jumpCooldown: 0.5
   _maxHealth: 3
   _laneWidth: 3
   _laneChangeSpeed: 5
@@ -1172,9 +1147,9 @@ Rigidbody:
   m_ImplicitCom: 1
   m_ImplicitTensor: 1
   m_UseGravity: 1
-  m_IsKinematic: 1
+  m_IsKinematic: 0
   m_Interpolate: 0
-  m_Constraints: 0
+  m_Constraints: 112
   m_CollisionDetection: 0
 --- !u!1 &1876292281
 GameObject:

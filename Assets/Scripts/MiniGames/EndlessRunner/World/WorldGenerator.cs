@@ -15,12 +15,12 @@ namespace EndlessRunner.World
         #region Private Fields
         [Header("Generation Settings")]
         [SerializeField] private float _chunkLength = 50f;
-        [SerializeField] private int _maxChunks = 5;
+        [SerializeField] private int _maxChunks = 3; // Azaltıldı - Bellek tasarrufu için
         [SerializeField] private float _obstacleSpawnRate = 0.3f;
         [SerializeField] private float _collectibleSpawnRate = 0.5f;
         [SerializeField] private int _laneCount = 3;
         [SerializeField] private float _laneWidth = 3f;
-        [SerializeField] private float _despawnDistance = 100f;
+        [SerializeField] private float _despawnDistance = 50f; // Azaltıldı - Daha hızlı temizlik
         
         [Header("Difficulty Settings")]
         [SerializeField] private float _difficultyIncreaseRate = 0.1f;
@@ -29,9 +29,9 @@ namespace EndlessRunner.World
         [SerializeField] private float _maxSpeed = 30f;
         
         [Header("Object Pooling")]
-        [SerializeField] private int _groundPoolSize = 10;
-        [SerializeField] private int _obstaclePoolSize = 20;
-        [SerializeField] private int _collectiblePoolSize = 15;
+        [SerializeField] private int _groundPoolSize = 5; // Azaltıldı
+        [SerializeField] private int _obstaclePoolSize = 10; // Azaltıldı
+        [SerializeField] private int _collectiblePoolSize = 8; // Azaltıldı
         
         // Generation state
         private float _currentDifficulty = 1f;
@@ -70,9 +70,8 @@ namespace EndlessRunner.World
         #endregion
         
         #region Unity Methods
-        private void Start()
+                private void Start()
         {
-            InitializeObjectPools();
             Debug.Log("[WorldGenerator] ✅ World generator initialized");
         }
         
@@ -97,6 +96,7 @@ namespace EndlessRunner.World
         public void Initialize(IEventBus eventBus)
         {
             _eventBus = eventBus;
+            InitializeObjectPools();
             SubscribeToEvents();
             GenerateInitialChunks();
             Debug.Log("[WorldGenerator] 🌍 World generator connected to event system");
@@ -166,7 +166,7 @@ namespace EndlessRunner.World
                 _eventBus.Publish(difficultyEvent);
             }
             
-            Debug.Log($"[WorldGenerator] 📈 Difficulty set to: {_currentDifficulty}");
+//            Debug.Log($"[WorldGenerator] 📈 Difficulty set to: {_currentDifficulty}");
         }
         
         /// <summary>
@@ -175,7 +175,7 @@ namespace EndlessRunner.World
         public void SetSpeed(float speed)
         {
             _currentSpeed = Mathf.Clamp(speed, 5f, _maxSpeed);
-            Debug.Log($"[WorldGenerator] ⚡ Speed set to: {_currentSpeed}");
+//            Debug.Log($"[WorldGenerator] ⚡ Speed set to: {_currentSpeed}");
         }
         
         /// <summary>
@@ -291,6 +291,13 @@ namespace EndlessRunner.World
             {
                 DespawnChunk(oldestChunk);
                 _activeChunks.Dequeue();
+                
+                // Bellek temizliği için GC çağrısı (her 10 chunk'ta bir)
+                if (_chunkIndex % 10 == 0)
+                {
+                    System.GC.Collect();
+                    Debug.Log($"[WorldGenerator] 🧹 Memory cleanup at chunk {_chunkIndex}");
+                }
             }
         }
         
@@ -342,6 +349,12 @@ namespace EndlessRunner.World
         /// </summary>
         private GameObject GenerateGround(Vector3 chunkPosition)
         {
+            if (_groundPool == null)
+            {
+                Debug.LogError("[WorldGenerator] ❌ Ground pool is null! Initializing object pools...");
+                InitializeObjectPools();
+            }
+            
             GameObject ground = _groundPool.GetObject();
             ground.transform.position = chunkPosition;
             ground.transform.localScale = new Vector3(_laneWidth * _laneCount, 1f, _chunkLength);
@@ -356,6 +369,12 @@ namespace EndlessRunner.World
         /// </summary>
         private List<GameObject> GenerateObstacles(Vector3 chunkPosition)
         {
+            if (_obstaclePool == null)
+            {
+                Debug.LogError("[WorldGenerator] ❌ Obstacle pool is null! Initializing object pools...");
+                InitializeObjectPools();
+            }
+            
             List<GameObject> obstacles = new List<GameObject>();
             
             for (int lane = 0; lane < _laneCount; lane++)
@@ -389,6 +408,12 @@ namespace EndlessRunner.World
         /// </summary>
         private List<GameObject> GenerateCollectibles(Vector3 chunkPosition)
         {
+            if (_collectiblePool == null)
+            {
+                Debug.LogError("[WorldGenerator] ❌ Collectible pool is null! Initializing object pools...");
+                InitializeObjectPools();
+            }
+            
             List<GameObject> collectibles = new List<GameObject>();
             
             for (int lane = 0; lane < _laneCount; lane++)
@@ -421,33 +446,90 @@ namespace EndlessRunner.World
         private GameObject CreateGroundPrefab()
         {
             GameObject ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
+            
+            // Tag ayarla
+            ground.tag = "Ground";
+            
+            // Collider ayarları
+            Collider collider = ground.GetComponent<Collider>();
+            if (collider != null)
+            {
+                collider.isTrigger = false; // Ground solid olmalı
+            }
+            
+            // Renderer ayarları
             Renderer renderer = ground.GetComponent<Renderer>();
             if (renderer != null)
             {
                 renderer.material.color = Color.green;
             }
+            
             return ground;
         }
         
         private GameObject CreateObstaclePrefab()
         {
             GameObject obstacle = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            
+            // Tag ayarla
+            obstacle.tag = "Obstacle";
+            
+            // Collider ayarları
+            Collider collider = obstacle.GetComponent<Collider>();
+            if (collider != null)
+            {
+                collider.isTrigger = false; // Obstacle'lar solid olmalı
+            }
+            
+            // Renderer ayarları
             Renderer renderer = obstacle.GetComponent<Renderer>();
             if (renderer != null)
             {
                 renderer.material.color = Color.red;
             }
+            
+            // Rigidbody ekle (fizik için)
+            Rigidbody rb = obstacle.GetComponent<Rigidbody>();
+            if (rb == null)
+            {
+                rb = obstacle.AddComponent<Rigidbody>();
+            }
+            rb.isKinematic = true; // Hareket etmesin
+            rb.useGravity = false;
+            
             return obstacle;
         }
         
         private GameObject CreateCollectiblePrefab()
         {
             GameObject collectible = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            
+            // Tag ayarla
+            collectible.tag = "Collectible";
+            
+            // Collider ayarları
+            Collider collider = collectible.GetComponent<Collider>();
+            if (collider != null)
+            {
+                collider.isTrigger = true; // Collectible'lar trigger olmalı
+            }
+            
+            // Renderer ayarları
             Renderer renderer = collectible.GetComponent<Renderer>();
             if (renderer != null)
             {
                 renderer.material.color = Color.yellow;
             }
+            
+            // Rigidbody ekle (fizik için)
+            Rigidbody rb = collectible.GetComponent<Rigidbody>();
+            if (rb == null)
+            {
+                rb = collectible.AddComponent<Rigidbody>();
+            }
+            rb.isKinematic = true; // Hareket etmesin
+            rb.useGravity = false;
+            
             return collectible;
         }
         #endregion

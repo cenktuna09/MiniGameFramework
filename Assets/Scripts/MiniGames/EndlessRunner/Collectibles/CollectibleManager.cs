@@ -129,7 +129,7 @@ namespace EndlessRunner.Collectibles
         public void SetDifficulty(float difficulty)
         {
             _currentDifficulty = Mathf.Clamp(difficulty, 1f, _maxDifficulty);
-            Debug.Log($"[CollectibleManager] 📈 Difficulty set to: {_currentDifficulty}");
+//            Debug.Log($"[CollectibleManager] 📈 Difficulty set to: {_currentDifficulty}");
         }
         
         /// <summary>

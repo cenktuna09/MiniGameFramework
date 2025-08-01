@@ -17,6 +17,8 @@ namespace EndlessRunner.Player
         [SerializeField] private float _lateralSpeed = 5f;
         [SerializeField] private float _jumpForce = 8f;
         [SerializeField] private float _slideDuration = 1f;
+        [SerializeField] private float _slideDownForce = 5f; 
+        [SerializeField] private float _jumpCooldown = 0.5f;
         [SerializeField] private int _maxHealth = 3;
         
         [Header("Lane Settings")]
@@ -27,7 +29,9 @@ namespace EndlessRunner.Player
         private bool _isGrounded = true;
         private bool _isSliding = false;
         private bool _isJumping = false;
+        private bool _isDead = false; // Player ölüm durumu
         private float _slideTimer = 0f;
+        private float _jumpCooldownTimer = 0f; // Jump cooldown timer
         private int _currentHealth;
         private int _currentLane = 1; // 0=left, 1=center, 2=right
         private float _targetLaneX = 0f;
@@ -47,6 +51,7 @@ namespace EndlessRunner.Player
         public bool IsGrounded => _isGrounded;
         public bool IsSliding => _isSliding;
         public bool IsJumping => _isJumping;
+        public bool IsDead => _isDead;
         public int CurrentHealth => _currentHealth;
         public int CurrentLane => _currentLane;
         public float ForwardSpeed => _forwardSpeed;
@@ -81,6 +86,7 @@ namespace EndlessRunner.Player
         private void Update()
         {
             UpdateSlideTimer();
+            UpdateJumpCooldown();
             UpdateLaneMovement();
             CheckGrounded();
         }
@@ -94,6 +100,79 @@ namespace EndlessRunner.Player
         {
             // Unsubscribe from events
             _inputSubscription?.Dispose();
+        }
+        
+        private void OnTriggerEnter(Collider other)
+        {
+            HandleCollision(other, true);
+        }
+        
+        private void OnCollisionEnter(Collision collision)
+        {
+            HandleCollision(collision.collider, false);
+        }
+        
+        private void HandleCollision(Collider other, bool isTrigger)
+        {
+            if (other == null) return;
+            
+            switch (other.tag)
+            {
+                case "Collectible":
+                    HandleCollectibleCollision(other.gameObject);
+                    break;
+                    
+                case "Obstacle":
+                    HandleObstacleCollision(other.gameObject, isTrigger);
+                    break;
+                    
+                case "Ground":
+                    HandleGroundCollision(other.gameObject);
+                    break;
+            }
+        }
+        
+        private void HandleCollectibleCollision(GameObject collectible)
+        {
+            Debug.Log($"[PlayerController] 💰 Collectible collected: {collectible.name}");
+            
+            // Publish collectible collected event
+            if (_eventBus != null)
+            {
+                var collectibleEvent = new CollectibleCollectedEvent(collectible, gameObject, transform.position, "Coin", 100, _currentLane);
+                _eventBus.Publish(collectibleEvent);
+            }
+            
+            // Deactivate collectible
+            collectible.SetActive(false);
+        }
+        
+        private void HandleObstacleCollision(GameObject obstacle, bool isTrigger)
+        {
+            Debug.Log($"[PlayerController] 💥 Obstacle collision: {obstacle.name}");
+            
+            // Publish obstacle collision event
+            if (_eventBus != null)
+            {
+                var collisionEvent = new ObstacleCollisionEvent(obstacle, gameObject, transform.position, "Cube", 10f);
+                _eventBus.Publish(collisionEvent);
+            }
+            
+            // Take damage
+            TakeDamage(100);
+        }
+        
+        private void HandleGroundCollision(GameObject ground)
+        {
+            _isGrounded = true;
+            _isJumping = false;
+            
+            // Publish grounded event
+            if (_eventBus != null)
+            {
+                var groundedEvent = new PlayerGroundedEvent(true, transform.position, 0f);
+                _eventBus.Publish(groundedEvent);
+            }
         }
         #endregion
         
@@ -113,7 +192,7 @@ namespace EndlessRunner.Player
         /// </summary>
         public void MoveLaterally(float direction)
         {
-            if (_isSliding) return;
+            if (_isSliding || _isDead) return;
             
             // Calculate target lane based on direction
             int targetLane = Mathf.Clamp(_currentLane + Mathf.RoundToInt(direction), 0, 2);
@@ -127,28 +206,12 @@ namespace EndlessRunner.Player
         }
         
         /// <summary>
-        /// Make player jump
+        /// Make player jump with default force
         /// </summary>
         public void Jump()
         {
-            if (!_isGrounded || _isSliding) 
-            {
-                Debug.Log("[PlayerController] ⚠️ Cannot jump - not grounded or sliding");
-                return;
-            }
-            
-            _rigidbody.AddForce(Vector3.up * _jumpForce, ForceMode.Impulse);
-            _isJumping = true;
-            _isGrounded = false;
-            
-            // Publish jump event
-            if (_eventBus != null)
-            {
-                var jumpEvent = new PlayerJumpEvent(transform.position, _jumpForce, 0f, false);
-                _eventBus.Publish(jumpEvent);
-            }
-            
-            Debug.Log("[PlayerController] 🦘 Player jumped!");
+            if (_isDead) return;
+            PerformJump(_jumpForce);
         }
         
         /// <summary>
@@ -156,14 +219,17 @@ namespace EndlessRunner.Player
         /// </summary>
         public void Slide()
         {
-            if (_isSliding || _isJumping) 
+            if (_isSliding || _isJumping || _isDead) 
             {
-                Debug.Log("[PlayerController] ⚠️ Cannot slide - already sliding or jumping");
+                Debug.Log("[PlayerController] ⚠️ Cannot slide - already sliding, jumping, or dead");
                 return;
             }
             
             _isSliding = true;
             _slideTimer = _slideDuration;
+            
+            // Apply downward force for sliding
+            _rigidbody.AddForce(Vector3.down * _slideDownForce, ForceMode.Impulse);
             
             // Adjust collider for sliding
             if (_collider is CapsuleCollider capsuleCollider)
@@ -179,7 +245,7 @@ namespace EndlessRunner.Player
                 _eventBus.Publish(slideEvent);
             }
             
-            Debug.Log("[PlayerController] 🛷 Player started sliding!");
+            Debug.Log($"[PlayerController] 🛷 Player started sliding with downward force: {_slideDownForce}!");
         }
         
         /// <summary>
@@ -229,7 +295,9 @@ namespace EndlessRunner.Player
             _currentHealth = _maxHealth;
             _isSliding = false;
             _isJumping = false;
+            _isDead = false; // Reset death state
             _slideTimer = 0f;
+            _jumpCooldownTimer = 0f; // Reset jump cooldown
             _currentLane = 1;
             _targetLaneX = _currentLaneX = 0f;
             
@@ -256,7 +324,7 @@ namespace EndlessRunner.Player
             if (_eventBus == null) return;
             
             // Subscribe to lateral movement events
-            _inputSubscription = _eventBus.Subscribe<PlayerLateralMovementEvent>(OnLateralMovement);
+            _eventBus.Subscribe<PlayerLateralMovementEvent>(OnLateralMovement);
             
             // Subscribe to jump events
             _eventBus.Subscribe<PlayerJumpEvent>(OnJumpInput);
@@ -276,11 +344,52 @@ namespace EndlessRunner.Player
         }
         
         /// <summary>
-        /// Handle jump input
+        /// Handle jump input from event
         /// </summary>
         private void OnJumpInput(PlayerJumpEvent jumpEvent)
         {
-            Jump();
+            // Event'ten gelen jump force'u kullan
+            float jumpForce = jumpEvent.JumpForce > 0 ? jumpEvent.JumpForce : _jumpForce;
+            
+            // Jump yap
+            PerformJump(jumpForce);
+            
+            Debug.Log($"[PlayerController] 🦘 Jump event received! Force: {jumpForce}");
+        }
+        
+        /// <summary>
+        /// Perform jump with specified force
+        /// </summary>
+        private void PerformJump(float jumpForce)
+        {
+            if (!_isGrounded || _isSliding || _isDead) 
+            {
+                Debug.Log("[PlayerController] ⚠️ Cannot jump - not grounded, sliding, or dead");
+                return;
+            }
+            
+            // Check jump cooldown
+            if (_jumpCooldownTimer > 0f)
+            {
+                Debug.Log($"[PlayerController] ⚠️ Jump on cooldown! Remaining: {_jumpCooldownTimer:F2}s");
+                return;
+            }
+            
+            _rigidbody.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+            _isJumping = true;
+            _isGrounded = false;
+            
+            // Set jump cooldown
+            _jumpCooldownTimer = _jumpCooldown;
+            
+            // Publish jump event
+            if (_eventBus != null)
+            {
+                var jumpEvent = new PlayerJumpEvent(transform.position, jumpForce, 0f, false);
+                _eventBus.Publish(jumpEvent);
+            }
+            
+            Debug.Log($"[PlayerController] 🦘 Player jumped with force: {jumpForce}!");
         }
         
         /// <summary>
@@ -299,6 +408,8 @@ namespace EndlessRunner.Player
         /// </summary>
         private void ApplyForwardMovement()
         {
+            if (_isDead) return;
+            
             Vector3 forwardMovement = Vector3.forward * _forwardSpeed * Time.deltaTime;
             transform.Translate(forwardMovement);
             
@@ -315,6 +426,8 @@ namespace EndlessRunner.Player
         /// </summary>
         private void UpdateLaneMovement()
         {
+            if (_isDead) return;
+            
             if (Mathf.Abs(_currentLaneX - _targetLaneX) > 0.01f)
             {
                 _currentLaneX = Mathf.Lerp(_currentLaneX, _targetLaneX, _laneChangeSpeed * Time.deltaTime);
@@ -337,6 +450,17 @@ namespace EndlessRunner.Player
                 {
                     EndSlide();
                 }
+            }
+        }
+        
+        /// <summary>
+        /// Update jump cooldown timer
+        /// </summary>
+        private void UpdateJumpCooldown()
+        {
+            if (_jumpCooldownTimer > 0f)
+            {
+                _jumpCooldownTimer -= Time.deltaTime;
             }
         }
         
@@ -391,7 +515,17 @@ namespace EndlessRunner.Player
         /// </summary>
         private void Die()
         {
+            if (_isDead) return; // Prevent multiple death calls
+            
+            _isDead = true;
             Debug.Log("[PlayerController] 💀 Player died!");
+            
+            // Stop all movement
+            if (_rigidbody != null)
+            {
+                _rigidbody.linearVelocity = Vector3.zero;
+                _rigidbody.angularVelocity = Vector3.zero;
+            }
             
             // Publish death event
             if (_eventBus != null)

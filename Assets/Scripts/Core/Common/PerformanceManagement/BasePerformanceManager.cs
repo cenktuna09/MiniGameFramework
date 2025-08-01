@@ -16,7 +16,7 @@ namespace Core.Common.PerformanceManagement
         protected IEventBus _eventBus;
         protected bool _isMonitoring = false;
         protected float _frameTimeThreshold = 16.67f; // 60 FPS
-        protected float _memoryThreshold = 100f; // 100MB
+        protected float _memoryThreshold = 400f; // 800MB - Modern oyunlar için daha uygun
         protected float _lastFrameTime;
         protected float _averageFrameTime;
         protected int _frameCount;
@@ -150,7 +150,7 @@ namespace Core.Common.PerformanceManagement
                 OnPerformanceAlert?.Invoke(alert);
                 _eventBus?.Publish(new PerformanceAlertEvent(alert));
                 
-                Debug.LogError($"[{GetType().Name}] 🚨 {alert}");
+//                // Debug.LogError($"[{GetType().Name}] 🚨 {alert}"); // Debug log kapatıldı
             }
         }
         

@@ -139,6 +139,9 @@ namespace EndlessRunner.Core
             // Start game state
             _stateManager?.TransitionTo(RunnerGameState.Running);
             
+            // Unlock input for new game
+            _inputManager?.UnlockInput();
+            
             // Publish game started event
             _eventBus?.Publish(new GameStartedEvent(Time.time));
             
@@ -212,6 +215,9 @@ namespace EndlessRunner.Core
             _worldGenerator?.ResetGenerator();
             _obstacleManager?.ResetManager();
             _collectibleManager?.ResetManager();
+            
+            // Unlock input after reset
+            _inputManager?.UnlockInput();
             
             Debug.Log("[EndlessRunnerGame] 🔄 Game state reset");
         }
@@ -469,6 +475,13 @@ namespace EndlessRunner.Core
             // Handle damage based on collision force
             int damageAmount = Mathf.RoundToInt(collisionEvent.CollisionForce);
             _playerController?.TakeDamage(damageAmount);
+            
+            // Check if player died and lock input
+            if (_playerController != null && _playerController.IsDead)
+            {
+                _inputManager?.LockInput();
+                Debug.Log("[EndlessRunnerGame] 🔒 Input locked due to player death");
+            }
         }
         
         #endregion

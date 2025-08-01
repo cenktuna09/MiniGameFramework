@@ -127,7 +127,7 @@ namespace EndlessRunner.Testing
         #region Event Handlers
         private void OnPlayerMovement(PlayerMovementEvent movementEvent)
         {
-            Debug.Log($"[PlayerControllerTester] 🏃 Player moved: {movementEvent.Position}, Speed: {movementEvent.Speed}");
+//            Debug.Log($"[PlayerControllerTester] 🏃 Player moved: {movementEvent.Position}, Speed: {movementEvent.Speed}");
         }
         
         private void OnPlayerJump(PlayerJumpEvent jumpEvent)

@@ -75,6 +75,13 @@ namespace EndlessRunner.Input
         {
             if (_isInputLocked) return;
             
+            // Check if player is dead - if so, don't process input
+            var playerController = Object.FindFirstObjectByType<EndlessRunner.Player.PlayerController>();
+            if (playerController != null && playerController.IsDead)
+            {
+                return; // Don't process input when player is dead
+            }
+            
             var inputResult = inputHandler?.ProcessInput() ?? ProcessInputDirectly();
             if (inputResult.HasInput)
             {

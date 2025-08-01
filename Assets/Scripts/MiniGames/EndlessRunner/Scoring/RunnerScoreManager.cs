@@ -99,7 +99,7 @@ namespace EndlessRunner.Scoring
                 var distanceScore = Mathf.FloorToInt(_distanceTraveled);
                 SetScore(distanceScore);
                 
-                Debug.Log($"[RunnerScoreManager] 📊 Distance score: {distanceScore} (Total distance: {_distanceTraveled:F1})");
+//                Debug.Log($"[RunnerScoreManager] 📊 Distance score: {distanceScore} (Total distance: {_distanceTraveled:F1})");
             }
         }
         

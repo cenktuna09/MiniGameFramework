@@ -178,7 +178,7 @@ namespace Core.Common.ScoringManagement
             OnScoreChanged?.Invoke(_currentScore, _currentScore - oldScore);
             _eventBus?.Publish(new ScoreChangedEvent(_currentScore, _currentScore - oldScore));
             
-            Debug.Log($"[{GetType().Name}] 📊 Score set to: {_currentScore}");
+//            Debug.Log($"[{GetType().Name}] 📊 Score set to: {_currentScore}");
         }
         
         /// <summary>
