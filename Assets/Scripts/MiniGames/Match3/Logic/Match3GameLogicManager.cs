@@ -293,9 +293,9 @@ namespace MiniGameFramework.MiniGames.Match3.Logic
                 var matches = MatchDetector.FindMatches(simulatedBoard);
                 bool wouldCreateMatch = matches != null && matches.Count > 0;
                 
-                Debug.Log($"[Match3GameLogicManager] 🔍 Testing swap {swap.tileA} ↔ {swap.tileB}: " +
-                         $"TileA={tileA.Type}, TileB={tileB.Type}, " +
-                         $"WouldCreateMatch={wouldCreateMatch}, MatchesFound={matches.Count}");
+                // Debug.Log($"[Match3GameLogicManager] 🔍 Testing swap {swap.tileA} ↔ {swap.tileB}: " +
+                //          $"TileA={tileA.Type}, TileB={tileB.Type}, " +
+                //          $"WouldCreateMatch={wouldCreateMatch}, MatchesFound={matches.Count}");
                 
                 return wouldCreateMatch;
             }

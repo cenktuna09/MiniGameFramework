@@ -1,85 +1,161 @@
-# 🎯 Cursor Rules for MiniGameFramework-Unity6
+# 🏃‍♂️ EndlessRunner Development Rules & Philosophy
 
-global:
-  - Always follow SOLID principles and Unity 6 best practices.
-  - Use clean modular architecture: Core systems must be independent of MiniGames.
-  - No hard dependencies between MiniGames and Core (use MiniGameBase + EventBus).
-  - Prefer composition over inheritance except for MiniGameBase.
-  - Use async/await for scene loading (Unity 6 Task-based SceneManager).
-  - Favor record structs for lightweight data objects (Tiles, etc.).
-  - Use descriptive names; avoid unnecessary abbreviations.
-  - Always add XML doc comments for public classes and methods.
-  - Keep methods under 50 lines; split responsibilities into smaller functions.
+## 🎯 Core Development Philosophy
 
-paths:
-  - path: Assets/Core/**
-    rules:
-      - Core must not reference specific MiniGames.
-      - Follow Dependency Inversion: Core depends on abstractions, not concrete MiniGames.
-      - All core services must be bound via Zenject or custom DI. Avoid new singletons outside DI.
+### **Primary Principle: Clear Code Structure > Amount of Features**
+- Focus on modular, maintainable, and testable code over feature quantity
+- Prioritize clean architecture and SOLID principles
+- Build scalable foundation before adding complex features
 
-  - path: Assets/MiniGames/**
-    rules:
-      - Each mini-game must extend MiniGameBase.
-      - No direct references to other mini-games.
-      - Keep game-specific logic encapsulated in its folder.
+### **Architecture Guidelines**
+- **Hybrid Core Systems**: Use Core/Common base classes for shared functionality
+- **Event-Driven Architecture**: Implement loose coupling via EventBus
+- **Single Responsibility**: Each class should have one clear purpose
+- **Dependency Injection**: Use ServiceLocator for service resolution
+- **Base Class Leverage**: Extend Core/Common base classes for game-specific implementations
 
-  - path: Assets/Scenes/**
-    rules:
-      - Scenes should be minimal and rely on GameManager for flow.
-      - Avoid hardcoding scene names; use constants or config.
+## 📝 Coding Standards
 
-  - path: Assets/UI/**
-    rules:
-      - UI logic must remain in UI layer only.
-      - No direct game logic in UI components; communicate via events or GameManager.
-      - Panels should be reusable across mini-games.
+### **Comment Style**
+- Always comment with `#` symbol
+- Use English for all comments and explanations
+- Explain code functionality in English during discussions
+- Use descriptive English naming for variables, methods, and classes
 
-review:
-  - Always check for SRP violations and suggest refactors.
-  - Point out performance pitfalls (GC allocations, Update misuse).
-  - Ensure EventBus usage stays decoupled.
-  - Check PlayerPrefs usage goes only through SaveSystem.
-  - Verify DI is correctly applied; no hidden static dependencies.
+### **Code Organization**
+- Follow the established folder structure:
+  - `Core/Common/` - Base classes for shared functionality
+  - `EndlessRunner/` - Game-specific implementations
+  - `Events/` - Event system classes
+  - `StateManagement/` - State management systems
+  - `InputManagement/` - Input handling systems
 
-design:
-  - When generating or refactoring code, always evaluate if there is a more modular, scalable, or maintainable alternative that better fits the project goals.
-  - If such an alternative exists, propose it explicitly before implementing.
-  - Alternatives should follow SOLID, decoupled architecture and Unity 6 performance best practices.
-  - Clearly explain why the alternative is superior (testability, extensibility, performance, maintainability).
+### **Naming Conventions**
+- Use **PascalCase** for classes, methods, and properties
+- Use **camelCase** for variables and parameters
+- Use **UPPER_CASE** for constants
+- Prefix private fields with underscore: `_privateField`
+- Use descriptive names that explain purpose
 
-addressables:
-  - All scenes and runtime assets must use Addressables for loading/unloading.
-  - Avoid direct references in inspectors for dynamic content; prefer Addressable references.
+### **Performance Guidelines**
+- Target 60 FPS performance
+- Optimize memory usage (< 100MB RAM)
+- Use object pooling for frequently created/destroyed objects
+- Implement lazy evaluation where appropriate
+- Monitor performance with BasePerformanceManager
 
-match3:
-  - Board generation must ensure:
-      - No pre-existing matches at game start.
-      - At least one valid move is always available.
-  - Use constraint-based algorithm to validate tiles during generation.
+## 🏗️ Implementation Rules
 
-endlessrunner:
-  - Player movement must use Unity's new Input System for extensibility (mobile + PC).
-  - Movement logic should be framerate-independent (use deltaTime or FixedUpdate).
-  - Use object pooling for obstacles to avoid GC spikes during gameplay.
-  - Level generation must be modular (segment-based or procedural chunks).
-  - Game speed scaling should be handled via a configurable curve or difficulty manager.
-  - Avoid heavy physics if not needed; prefer lightweight colliders and simple triggers.
-  - Keep RunnerManager responsible only for game flow; PlayerController handles input/movement, Spawner handles obstacles.
+### **Base Class Usage**
+- Always extend appropriate base classes from `Core/Common/`
+- Implement abstract methods properly
+- Follow the template method pattern
+- Maintain consistency across mini-games
 
-performance:
-  - All Update loops must be reviewed for GC allocations.
-  - Prefer event-driven or coroutine-based alternatives where possible.
-  - Use object pooling for frequently spawned/destroyed objects.
+### **Event System**
+- Use EventBus for all inter-system communication
+- Create specific event classes for different game actions
+- Subscribe to events in constructors or initialization methods
+- Publish events for significant game state changes
 
-testing:
-  - Every major system must have a comprehensive Tester class (like UIFrameworkTester, GameStateManagerTester).
-  - Tester classes should include: bootstrap integration tests, functional tests, edge case tests, manual controls.
-  - Auto-create test scenes with Unity MenuItem: "MiniGameFramework/Setup/Create [System] Test Scene".
-  - Test systems must provide: real-time UI displays, pass/fail tracking, automated test sequences, manual control buttons.
-  - All tests should run automatically on scene start with configurable intervals.
-  - Event system integration must be tested in every tester (subscribe/publish verification).
-  - Use reflection and GameObject.Find for automatic UI component assignment in test setup.
-  - Test results should show detailed pass/fail counts and comprehensive logging.
-  - Performance testing: ensure 60 FPS stability during all test sequences.
-  - Test cleanup: properly dispose event subscriptions and reset systems.
+### **State Management**
+- Use BaseGameStateManager<T> for state management
+- Define clear transition rules
+- Validate state transitions
+- Log state changes for debugging
+
+### **Input Handling**
+- Extend BaseInputManager for input systems
+- Implement command pattern for input actions
+- Support both mouse/touch and keyboard input
+- Lock/unlock input appropriately during game states
+
+### **Error Handling**
+- Use BaseErrorHandler for consistent error handling
+- Implement safe execution patterns
+- Validate configurations and animations
+- Provide meaningful error messages
+
+## 🎮 Game-Specific Rules
+
+### **EndlessRunner Implementation**
+- Use RunnerGameState enum for game states
+- Implement RunnerStateManager extending BaseGameStateManager
+- Create RunnerInputManager for 3D input handling
+- Use PlayerController for player movement and physics
+- Implement WorldGenerator for procedural level generation
+- Use ScoreManager for scoring and high score tracking
+
+### **3D Movement System**
+- Implement constant forward movement
+- Support lateral movement based on input
+- Handle jumping with physics (Rigidbody)
+- Implement sliding mechanics
+- Use collision detection for obstacles and collectibles
+
+### **World Generation**
+- Use chunk-based level generation
+- Implement spawn/despawn system for performance
+- Create modular chunk prefabs
+- Support procedural obstacle placement
+- Optimize memory usage with object pooling
+
+## 📊 Quality Standards
+
+### **Code Quality Metrics**
+- SOLID principles compliance
+- Maintainability: Easy to modify and extend
+- Testability: Each system independently testable
+- Scalability: Easy to add new features
+- Consistency: Same patterns across all mini-games
+
+### **Performance Metrics**
+- 60 FPS on target devices
+- < 100MB RAM usage
+- < 3 seconds initial load time
+- < 100ms input lag
+- No frame drops during gameplay
+
+### **Documentation Requirements**
+- Comment all public methods and classes
+- Document complex algorithms
+- Explain design decisions in comments
+- Keep README files updated
+
+## 🔧 Development Workflow
+
+### **Implementation Priority**
+1. **Foundation First**: Build core systems before features
+2. **Test Early**: Write tests for each system
+3. **Iterate**: Refactor based on testing feedback
+4. **Optimize**: Performance optimization after functionality
+5. **Polish**: UI and user experience last
+
+### **Code Review Checklist**
+- [ ] Follows naming conventions
+- [ ] Uses appropriate base classes
+- [ ] Implements event-driven communication
+- [ ] Includes proper error handling
+- [ ] Maintains performance standards
+- [ ] Includes necessary comments
+- [ ] Follows SOLID principles
+
+## 🚀 Success Criteria
+
+### **Technical Success**
+- Clean, readable code structure
+- Proper inheritance from base classes
+- Event-driven architecture implementation
+- Performance targets met
+- Memory usage optimized
+
+### **Gameplay Success**
+- Responsive input system
+- Smooth 3D movement
+- Engaging endless runner mechanics
+- Scalable world generation
+- Consistent user experience
+
+---
+
+*These rules ensure consistent, high-quality code development for the EndlessRunner project while maintaining the hybrid core systems architecture.*

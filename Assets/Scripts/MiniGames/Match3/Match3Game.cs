@@ -327,7 +327,7 @@ namespace MiniGameFramework.MiniGames.Match3
                 // Fallback to original implementation
                 possibleSwaps.Clear();
                 
-                Debug.Log("[Match3Game] 🔍 Starting possible swaps detection (fallback)...");
+                // Debug.Log("[Match3Game] 🔍 Starting possible swaps detection (fallback)...");
                 
                 for (int x = 0; x < currentBoard.Width; x++)
                 {
@@ -343,7 +343,7 @@ namespace MiniGameFramework.MiniGames.Match3
                             if (WouldSwapCreateMatch(swap))
                             {
                                 possibleSwaps.Add(swap);
-                                Debug.Log($"[Match3Game] ✅ Found valid swap: {swap.tileA} ↔ {swap.tileB}");
+                                // Debug.Log($"[Match3Game] ✅ Found valid swap: {swap.tileA} ↔ {swap.tileB}");
                             }
                         }
                         
@@ -354,7 +354,7 @@ namespace MiniGameFramework.MiniGames.Match3
                             if (WouldSwapCreateMatch(swap))
                             {
                                 possibleSwaps.Add(swap);
-                                Debug.Log($"[Match3Game] ✅ Found valid swap: {swap.tileA} ↔ {swap.tileB}");
+                                // Debug.Log($"[Match3Game] ✅ Found valid swap: {swap.tileA} ↔ {swap.tileB}");
                             }
                         }
                     }
@@ -387,9 +387,9 @@ namespace MiniGameFramework.MiniGames.Match3
             var matches = MatchDetector.FindMatches(simulatedBoard);
             bool wouldCreateMatch = matches.Count > 0;
             
-            Debug.Log($"[Match3Game] 🔍 Testing swap {swap.tileA} ↔ {swap.tileB}: " +
-                     $"TileA={tileA.Type}, TileB={tileB.Type}, " +
-                     $"WouldCreateMatch={wouldCreateMatch}, MatchesFound={matches.Count}");
+            // Debug.Log($"[Match3Game] 🔍 Testing swap {swap.tileA} ↔ {swap.tileB}: " +
+            //          $"TileA={tileA.Type}, TileB={tileB.Type}, " +
+            //          $"WouldCreateMatch={wouldCreateMatch}, MatchesFound={matches.Count}");
             
             return wouldCreateMatch;
         }
@@ -596,7 +596,7 @@ namespace MiniGameFramework.MiniGames.Match3
         /// </summary>
         private IEnumerator AnimateSwapWithLeanTween(Swap swap)
         {
-            Debug.Log($"[Match3Game] 🎬 Starting optimized swap animation: {swap.tileA} ↔ {swap.tileB}");
+            // Debug.Log($"[Match3Game] 🎬 Starting optimized swap animation: {swap.tileA} ↔ {swap.tileB}");
             
             var visualA = visualTiles[swap.tileA.x, swap.tileA.y];
             var visualB = visualTiles[swap.tileB.x, swap.tileB.y];
@@ -720,7 +720,7 @@ namespace MiniGameFramework.MiniGames.Match3
         /// </summary>
         private IEnumerator AnimateSwap(Swap swap)
         {
-            Debug.Log($"[Match3Game] 🎬 Starting swap animation: {swap.tileA} ↔ {swap.tileB}");
+            // Debug.Log($"[Match3Game] 🎬 Starting swap animation: {swap.tileA} ↔ {swap.tileB}");
             
             var visualA = visualTiles[swap.tileA.x, swap.tileA.y];
             var visualB = visualTiles[swap.tileB.x, swap.tileB.y];
@@ -824,7 +824,7 @@ namespace MiniGameFramework.MiniGames.Match3
                 }
                 
                 cascadeCount++;
-                Debug.Log($"[Match3Game] 💥 Cascade {cascadeCount}: Found {matches.Count} matches");
+                // Debug.Log($"[Match3Game] 💥 Cascade {cascadeCount}: Found {matches.Count} matches");
                 
                 // # Calculate score with cascade bonus
                 int matchScore = CalculateMatchScore(matches, cascadeCount);
@@ -844,7 +844,7 @@ namespace MiniGameFramework.MiniGames.Match3
                 Debug.Log($"[Match3Game] 🔄 Updated game logic manager board after explosion. Board state: {currentBoard.Width}x{currentBoard.Height}");
                 
                 // # Apply gravity and refill
-                Debug.Log("[Match3Game] 🌍 Applying gravity and refilling...");
+                // Debug.Log("[Match3Game] 🌍 Applying gravity and refilling...");
                 yield return StartCoroutine(ApplyGravityAndRefill());
                 
                 // # Update game logic manager with final board state after gravity and refill
@@ -1372,7 +1372,7 @@ namespace MiniGameFramework.MiniGames.Match3
             Debug.Log("[Match3Game] 🌍 Starting optimized gravity and refill process...");
             
             // # PHASE 1: Apply gravity to all columns simultaneously
-            Debug.Log("[Match3Game] ⬇️ Applying gravity to all columns in parallel...");
+            // Debug.Log("[Match3Game] ⬇️ Applying gravity to all columns in parallel...");
             var gravityCoroutines = new List<Coroutine>();
             
             for (int x = 0; x < currentBoard.Width; x++)
@@ -1468,7 +1468,7 @@ namespace MiniGameFramework.MiniGames.Match3
         /// </summary>
         private IEnumerator ApplyGravityToColumn(int column)
         {
-            Debug.Log($"[Match3Game] 🌍 Applying gravity to column {column}");
+            // Debug.Log($"[Match3Game] 🌍 Applying gravity to column {column}");
             
             // # PHASE 1: Calculate final positions for all tiles using proper cascade algorithm
             var tilesToMove = new List<(int fromY, int toY, TileData tile, GameObject visual)>();
@@ -1484,7 +1484,7 @@ namespace MiniGameFramework.MiniGames.Match3
                 }
             }
             
-            Debug.Log($"[Match3Game] Column {column}: Found {tilesInColumn.Count} tiles");
+            // Debug.Log($"[Match3Game] Column {column}: Found {tilesInColumn.Count} tiles");
             
             // # Step 2: Calculate final positions using bottom-up approach
             // Start from the bottom and place tiles in the lowest available positions
@@ -1512,7 +1512,7 @@ namespace MiniGameFramework.MiniGames.Match3
             
             tilesToMove = finalPositions;
             
-            Debug.Log($"[Match3Game] Column {column}: {tilesToMove.Count} tiles need to move");
+            // Debug.Log($"[Match3Game] Column {column}: {tilesToMove.Count} tiles need to move");
             
             // # PHASE 2: Execute all animations with proper completion tracking
             if (tilesToMove.Count > 0)
@@ -1521,12 +1521,12 @@ namespace MiniGameFramework.MiniGames.Match3
                 var totalAnimations = tilesToMove.Count;
                 var animationsCompleted = false;
                 
-                Debug.Log($"[Match3Game] 🎬 Starting {totalAnimations} gravity animations for column {column}");
+                // Debug.Log($"[Match3Game] 🎬 Starting {totalAnimations} gravity animations for column {column}");
                 
                 // Start all animations simultaneously
                 foreach (var (fromY, toY, tile, visual) in tilesToMove)
                 {
-                    Debug.Log($"[Match3Game] 🎬 Starting gravity animation: ({column},{fromY}) -> ({column},{toY})");
+                    // Debug.Log($"[Match3Game] 🎬 Starting gravity animation: ({column},{fromY}) -> ({column},{toY})");
                     
                     // Update board data immediately
                     currentBoard = currentBoard.SetTile(column, fromY, new TileData(TileType.Empty, new Vector2Int(column, fromY)));
@@ -1583,7 +1583,7 @@ namespace MiniGameFramework.MiniGames.Match3
         /// </summary>
         private IEnumerator RefillColumn(int column)
         {
-            Debug.Log($"[Match3Game] 🔄 Refilling column {column} with LeanTween animations...");
+            // Debug.Log($"[Match3Game] 🔄 Refilling column {column} with LeanTween animations...");
             
             var tilesToSpawn = new List<(int y, TileData tile)>();
             
@@ -1600,7 +1600,7 @@ namespace MiniGameFramework.MiniGames.Match3
                 }
             }
             
-            Debug.Log($"[Match3Game] Column {column}: Need to spawn {tilesToSpawn.Count} new tiles");
+            // Debug.Log($"[Match3Game] Column {column}: Need to spawn {tilesToSpawn.Count} new tiles");
             
             // # PHASE 2: Batch spawn all tiles with LeanTween (DELAYED)
             if (tilesToSpawn.Count > 0)
