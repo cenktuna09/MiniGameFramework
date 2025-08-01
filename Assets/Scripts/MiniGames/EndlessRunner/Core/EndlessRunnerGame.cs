@@ -18,6 +18,7 @@ using EndlessRunner.Events;
 using EndlessRunner.Config;
 using EndlessRunner.Player;
 using EndlessRunner.World;
+
 namespace EndlessRunner.Core
 {
     /// <summary>
@@ -37,8 +38,7 @@ namespace EndlessRunner.Core
         
         #region Private Fields
         
-        // Core systems
-        private IEventBus _eventBus;
+        // Core systems - using framework EventBus
         private RunnerStateManager _stateManager;
         private RunnerScoreManager _scoreManager;
         private RunnerInputManager _inputManager;
@@ -87,10 +87,10 @@ namespace EndlessRunner.Core
         protected override void Awake()
         {
             base.Awake();
-            InitializeGame();
+            // Don't initialize here - wait for OnInitializeAsync()
         }
         
-        private void Start()
+        private new void Start()
         {
             OnUnityStart();
         }
@@ -115,7 +115,7 @@ namespace EndlessRunner.Core
             }
         }
         
-        private void OnDestroy()
+        private new void OnDestroy()
         {
             CleanupGame();
         }
@@ -155,7 +155,8 @@ namespace EndlessRunner.Core
             _inputManager?.UnlockInput();
             
             // Publish game started event
-            _eventBus?.Publish(new GameStartedEvent(Time.time));
+            var eventBus = ServiceLocator.Instance.Resolve<IEventBus>();
+            eventBus?.Publish(new GameStartedEvent(Time.time));
             
             Debug.Log("[EndlessRunnerGame] 🎮 Game started");
         }
@@ -242,21 +243,31 @@ namespace EndlessRunner.Core
         {
             Debug.Log("[EndlessRunnerGame] 🎮 Initializing Endless Runner Game (Async)...");
             
-            // Create event bus
-            _eventBus = new EventBus();
+            // Use framework EventBus from ServiceLocator
+            var eventBus = ServiceLocator.Instance.Resolve<IEventBus>();
+            if (eventBus == null)
+            {
+                Debug.LogError("[EndlessRunnerGame] ❌ No EventBus found in ServiceLocator!");
+                return;
+            }
             
-            // Initialize core systems
-            InitializeCoreSystems();
+            Debug.Log("[EndlessRunnerGame] ✅ Using framework EventBus from ServiceLocator");
+            
+            // Initialize core systems with framework EventBus
+            InitializeCoreSystems(eventBus);
             
             // Find game systems
-            FindGameSystems();
+            FindGameSystems(eventBus);
             
             // Subscribe to events
-            SubscribeToEvents();
+            SubscribeToEvents(eventBus);
             
             _isInitialized = true;
             
             Debug.Log("[EndlessRunnerGame] ✅ Game initialization complete (Async)");
+            
+            // Add await to make the method truly async
+            await Task.CompletedTask;
         }
         
         /// <summary>
@@ -358,73 +369,45 @@ namespace EndlessRunner.Core
         #region Private Methods
         
         /// <summary>
-        /// Initialize the game
+        /// Initialize core systems using framework EventBus
         /// </summary>
-        private void InitializeGame()
+        private void InitializeCoreSystems(IEventBus eventBus)
         {
-            Debug.Log("[EndlessRunnerGame] 🎮 Initializing Endless Runner Game...");
+            // Create state manager with framework EventBus
+            _stateManager = new RunnerStateManager(eventBus);
             
-            // Create event bus
-            _eventBus = new EventBus();
+            // Create score manager with framework EventBus
+            _scoreManager = new RunnerScoreManager(eventBus);
             
-            // Register event bus with ServiceLocator
-            ServiceLocator.Instance.Register<IEventBus>(_eventBus);
+            // Create input manager with framework EventBus
+            _inputManager = new RunnerInputManager(eventBus);
             
-            // Initialize core systems
-            InitializeCoreSystems();
+            // Create performance manager with framework EventBus
+            _performanceManager = new RunnerPerformanceManager(eventBus);
             
-            // Find game systems
-            FindGameSystems();
+            // Create error handler with framework EventBus
+            _errorHandler = new RunnerErrorHandler(eventBus);
             
-            // Subscribe to events
-            SubscribeToEvents();
-            
-            _isInitialized = true;
-            
-            Debug.Log("[EndlessRunnerGame] ✅ Game initialization complete");
-        }
-        
-        /// <summary>
-        /// Initialize core systems
-        /// </summary>
-        private void InitializeCoreSystems()
-        {
-            // Create state manager
-            _stateManager = new RunnerStateManager(_eventBus);
-            
-            // Create score manager
-            _scoreManager = new RunnerScoreManager(_eventBus);
-            
-            // Create input manager
-            _inputManager = new RunnerInputManager(_eventBus);
-            
-            // Create performance manager
-            _performanceManager = new RunnerPerformanceManager(_eventBus);
-            
-            // Create error handler
-            _errorHandler = new RunnerErrorHandler(_eventBus);
-            
-            Debug.Log("[EndlessRunnerGame] ✅ Core systems initialized");
+            Debug.Log("[EndlessRunnerGame] ✅ Core systems initialized with framework EventBus");
         }
         
         /// <summary>
         /// Find game systems in scene
         /// </summary>
-        private void FindGameSystems()
+        private void FindGameSystems(IEventBus eventBus)
         {
             // Find player controller
             _playerController = FindFirstObjectByType<PlayerController>();
             if (_playerController != null)
             {
-                _playerController.Initialize(_eventBus);
+                _playerController.Initialize(eventBus);
             }
-            
             
             // Find scroll controller
             var scrollController = FindFirstObjectByType<EndlessRunnerScrollController>();
             if (scrollController != null)
             {
-                scrollController.Initialize(_eventBus);
+                scrollController.Initialize(eventBus);
             }
             
             Debug.Log("[EndlessRunnerGame] ✅ Game systems found");
@@ -454,26 +437,26 @@ namespace EndlessRunner.Core
         }
         
         /// <summary>
-        /// Subscribe to game events
+        /// Subscribe to game events using framework EventBus
         /// </summary>
-        private void SubscribeToEvents()
+        private void SubscribeToEvents(IEventBus eventBus)
         {
             // Subscribe to state changes
-            _gameStateSubscription = _eventBus.Subscribe<StateChangedEvent<RunnerGameState>>(OnGameStateChanged);
+            _gameStateSubscription = eventBus.Subscribe<StateChangedEvent<RunnerGameState>>(OnGameStateChanged);
             
             // Subscribe to player events
-            _playerDeathSubscription = _eventBus.Subscribe<PlayerDeathEvent>(OnPlayerDeath);
+            _playerDeathSubscription = eventBus.Subscribe<PlayerDeathEvent>(OnPlayerDeath);
             
             // Subscribe to score events
-            _scoreUpdateSubscription = _eventBus.Subscribe<Events.ScoreChangedEvent>(OnScoreUpdated);
+            _scoreUpdateSubscription = eventBus.Subscribe<Events.ScoreChangedEvent>(OnScoreUpdated);
             
             // Subscribe to collectible events
-            _collectibleCollectedSubscription = _eventBus.Subscribe<CollectibleCollectedEvent>(OnCollectibleCollected);
+            _collectibleCollectedSubscription = eventBus.Subscribe<CollectibleCollectedEvent>(OnCollectibleCollected);
             
             // Subscribe to obstacle events
-            _obstacleCollisionSubscription = _eventBus.Subscribe<ObstacleCollisionEvent>(OnObstacleCollision);
+            _obstacleCollisionSubscription = eventBus.Subscribe<ObstacleCollisionEvent>(OnObstacleCollision);
             
-            Debug.Log("[EndlessRunnerGame] ✅ Event subscriptions created");
+            Debug.Log("[EndlessRunnerGame] ✅ Event subscriptions created with framework EventBus");
         }
         
         /// <summary>
