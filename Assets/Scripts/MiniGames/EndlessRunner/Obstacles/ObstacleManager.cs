@@ -129,7 +129,7 @@ namespace EndlessRunner.Obstacles
         public void SetDifficulty(float difficulty)
         {
             _currentDifficulty = Mathf.Clamp(difficulty, 1f, _maxDifficulty);
-            Debug.Log($"[ObstacleManager] 📈 Difficulty set to: {_currentDifficulty}");
+//            Debug.Log($"[ObstacleManager] 📈 Difficulty set to: {_currentDifficulty}");
         }
         
         /// <summary>

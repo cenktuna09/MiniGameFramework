@@ -44,7 +44,7 @@ namespace Core.Events
             FrameNumber = Time.frameCount;
             Source = source;
             
-            Debug.Log($"[GameEvent] Created {EventType} at frame {FrameNumber}");
+           // Debug.Log($"[GameEvent] Created {EventType} at frame {FrameNumber}");
         }
         #endregion
         

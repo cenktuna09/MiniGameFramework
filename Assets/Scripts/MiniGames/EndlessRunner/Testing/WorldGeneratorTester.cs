@@ -181,8 +181,8 @@ namespace EndlessRunner.Testing
         
         private void OnDifficultyChanged(WorldDifficultyChangedEvent difficultyEvent)
         {
-            Debug.Log($"[WorldGeneratorTester] 📈 Difficulty changed: {difficultyEvent.PreviousDifficulty} → {difficultyEvent.NewDifficulty}");
-            Debug.Log($"[WorldGeneratorTester] 📏 Distance: {difficultyEvent.DistanceTraveled}, Reason: {difficultyEvent.DifficultyReason}");
+//            Debug.Log($"[WorldGeneratorTester] 📈 Difficulty changed: {difficultyEvent.PreviousDifficulty} → {difficultyEvent.NewDifficulty}");
+//            Debug.Log($"[WorldGeneratorTester] 📏 Distance: {difficultyEvent.DistanceTraveled}, Reason: {difficultyEvent.DifficultyReason}");
         }
         
         private void OnObstacleSpawned(ObstacleSpawnedEvent obstacleEvent)
