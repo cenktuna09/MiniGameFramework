@@ -1,6 +1,6 @@
 using System.Collections;
 using UnityEngine;
-using MiniGameFramework.Core.Architecture;
+using Core.Architecture;
 using MiniGameFramework.MiniGames.Match3.Data;
 using MiniGameFramework.MiniGames.Match3.Utils;
 using System.Collections.Generic;

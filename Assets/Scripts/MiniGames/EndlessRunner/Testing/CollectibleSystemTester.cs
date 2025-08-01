@@ -1,6 +1,8 @@
 using UnityEngine;
 using Core.Architecture;
+using Core.Events;
 using EndlessRunner.Collectibles;
+using EndlessRunner.Events;
 
 namespace EndlessRunner.Testing
 {
@@ -64,7 +66,7 @@ namespace EndlessRunner.Testing
             Debug.Log("[CollectibleSystemTester] 🧪 Starting Collectible System test...");
             
             // Create event bus
-            _eventBus = new Core.Events.EventBus();
+            _eventBus = new EventBus();
             
             // Find or create collectible manager
             _collectibleManager = FindObjectOfType<CollectibleManager>();
@@ -210,8 +212,8 @@ namespace EndlessRunner.Testing
         #region Event Handlers
         private void OnCollectibleSpawned(CollectibleSpawnedEvent spawnEvent)
         {
-            Debug.Log($"[CollectibleSystemTester] 💰 Collectible spawned: {spawnEvent.CollectibleType} at {spawnEvent.Position}");
-            Debug.Log($"[CollectibleSystemTester] 🎯 Lane: {spawnEvent.Lane}, Value: {spawnEvent.Value}");
+            Debug.Log($"[CollectibleSystemTester] 💰 Collectible spawned: {spawnEvent.CollectibleType} at {spawnEvent.SpawnPosition}");
+            Debug.Log($"[CollectibleSystemTester] 🎯 Lane: {spawnEvent.LaneIndex}, Value: {spawnEvent.CollectibleValue}");
         }
         
         private void OnCollectibleCollected(CollectibleCollectedEvent collectionEvent)

@@ -2,7 +2,7 @@ using System;
 using System.Threading.Tasks;
 using UnityEngine;
 
-namespace MiniGameFramework.Core.Architecture
+namespace Core.Architecture
 {
     /// <summary>
     /// Base class for all mini-games in the framework.

@@ -24,16 +24,20 @@ using EndlessRunner.Collectibles;
 namespace EndlessRunner.Core
 {
     /// <summary>
-    /// Main game coordinator for 3D Endless Runner
-    /// Integrates all systems and manages the complete game loop
+    /// Main game controller for 3D Endless Runner
+    /// Manages all game systems and coordinates gameplay
     /// </summary>
     public class EndlessRunnerGame : MonoBehaviour
     {
-        #region Private Fields
+        #region Serialized Fields
+        
         [Header("Game Systems")]
-        [SerializeField] private RunnerConfig _runnerConfig;
         [SerializeField] private bool _autoStartGame = true;
         [SerializeField] private bool _enableDebugLogging = true;
+        
+        #endregion
+        
+        #region Private Fields
         
         // Core systems
         private IEventBus _eventBus;
@@ -61,18 +65,22 @@ namespace EndlessRunner.Core
         private System.IDisposable _scoreUpdateSubscription;
         private System.IDisposable _collectibleCollectedSubscription;
         private System.IDisposable _obstacleCollisionSubscription;
+        
         #endregion
         
         #region Public Properties
+        
         public bool IsGameRunning => _isGameRunning;
         public float GameTime => _currentGameTime;
         public RunnerStateManager StateManager => _stateManager;
         public RunnerScoreManager ScoreManager => _scoreManager;
         public PlayerController PlayerController => _playerController;
         public WorldGenerator WorldGenerator => _worldGenerator;
+        
         #endregion
         
         #region Unity Methods
+        
         private void Awake()
         {
             InitializeGame();
@@ -99,9 +107,11 @@ namespace EndlessRunner.Core
         {
             CleanupGame();
         }
+        
         #endregion
         
         #region Public Methods
+        
         /// <summary>
         /// Start the game
         /// </summary>
@@ -113,51 +123,26 @@ namespace EndlessRunner.Core
                 return;
             }
             
+            if (_isGameRunning)
+            {
+                Debug.LogWarning("[EndlessRunnerGame] ⚠️ Game already running!");
+                return;
+            }
+            
+            _isGameRunning = true;
             _gameStartTime = Time.time;
             _currentGameTime = 0f;
-            _isGameRunning = true;
             
-            // Initialize all systems
+            // Initialize systems
             InitializeSystems();
             
-            // Set initial game state
+            // Start game state
             _stateManager?.TransitionTo(RunnerGameState.Running);
             
-            // Start world generation
-            _worldGenerator?.Initialize(_eventBus);
+            // Publish game started event
+            _eventBus?.Publish(new GameStartedEvent(Time.time));
             
-            // Start obstacle system
-            _obstacleManager?.Initialize(_eventBus);
-            
-            // Start collectible system
-            _collectibleManager?.Initialize(_eventBus);
-            
-            // Initialize player
-            _playerController?.Initialize(_eventBus);
-            
-            // Initialize input system (already initialized in constructor)
-            
-            // Initialize score system (already initialized in constructor)
-            
-            // Initialize performance monitoring
-            _performanceManager?.Initialize();
-            
-            // Initialize error handling (already initialized in constructor)
-            
-            // Validate configuration
-            _errorHandler?.ValidateConfiguration((BaseGameConfig)_runnerConfig);
-            
-            Debug.Log("[EndlessRunnerGame] 🎮 Game started successfully!");
-            Debug.Log("[EndlessRunnerGame] 📊 Systems initialized:");
-            Debug.Log($"  - State Manager: {(_stateManager != null ? "✅" : "❌")}");
-            Debug.Log($"  - Score Manager: {(_scoreManager != null ? "✅" : "❌")}");
-            Debug.Log($"  - Input Manager: {(_inputManager != null ? "✅" : "❌")}");
-            Debug.Log($"  - Player Controller: {(_playerController != null ? "✅" : "❌")}");
-            Debug.Log($"  - World Generator: {(_worldGenerator != null ? "✅" : "❌")}");
-            Debug.Log($"  - Obstacle Manager: {(_obstacleManager != null ? "✅" : "❌")}");
-            Debug.Log($"  - Collectible Manager: {(_collectibleManager != null ? "✅" : "❌")}");
-            Debug.Log($"  - Performance Manager: {(_performanceManager != null ? "✅" : "❌")}");
-            Debug.Log($"  - Error Handler: {(_errorHandler != null ? "✅" : "❌")}");
+            Debug.Log("[EndlessRunnerGame] 🎮 Game started");
         }
         
         /// <summary>
@@ -167,7 +152,6 @@ namespace EndlessRunner.Core
         {
             if (!_isGameRunning) return;
             
-            _isGameRunning = false;
             _stateManager?.TransitionTo(RunnerGameState.Paused);
             
             Debug.Log("[EndlessRunnerGame] ⏸️ Game paused");
@@ -178,9 +162,8 @@ namespace EndlessRunner.Core
         /// </summary>
         public void ResumeGame()
         {
-            if (_isGameRunning) return;
+            if (_stateManager?.CurrentState != RunnerGameState.Paused) return;
             
-            _isGameRunning = true;
             _stateManager?.TransitionTo(RunnerGameState.Running);
             
             Debug.Log("[EndlessRunnerGame] ▶️ Game resumed");
@@ -194,10 +177,10 @@ namespace EndlessRunner.Core
             if (!_isGameRunning) return;
             
             _isGameRunning = false;
-            _stateManager?.SetState(RunnerGameState.GameOver);
+            _stateManager?.TransitionTo(RunnerGameState.GameOver);
             
             // Save final score
-            _scoreManager?.SaveHighScore();
+            _scoreManager?.EndGame();
             
             Debug.Log("[EndlessRunnerGame] 🏁 Game ended");
         }
@@ -222,20 +205,21 @@ namespace EndlessRunner.Core
             _currentGameTime = 0f;
             
             // Reset all systems
-            _stateManager?.ResetManager();
-            _scoreManager?.ResetManager();
-            _inputManager?.ResetManager();
+            _stateManager?.TransitionTo(RunnerGameState.Ready);
+            _scoreManager?.ResetScore();
+            _inputManager?.ResetInputState();
             _playerController?.ResetPlayer();
             _worldGenerator?.ResetGenerator();
             _obstacleManager?.ResetManager();
             _collectibleManager?.ResetManager();
-            _performanceManager?.ResetManager();
             
             Debug.Log("[EndlessRunnerGame] 🔄 Game state reset");
         }
+        
         #endregion
         
         #region Private Methods
+        
         /// <summary>
         /// Initialize the game
         /// </summary>
@@ -269,16 +253,16 @@ namespace EndlessRunner.Core
             _stateManager = new RunnerStateManager(_eventBus);
             
             // Create score manager
-            _scoreManager = new RunnerScoreManager();
+            _scoreManager = new RunnerScoreManager(_eventBus);
             
             // Create input manager
-            _inputManager = new RunnerInputManager();
+            _inputManager = new RunnerInputManager(_eventBus);
             
             // Create performance manager
-            _performanceManager = new RunnerPerformanceManager();
+            _performanceManager = new RunnerPerformanceManager(_eventBus);
             
             // Create error handler
-            _errorHandler = new RunnerErrorHandler();
+            _errorHandler = new RunnerErrorHandler(_eventBus);
             
             Debug.Log("[EndlessRunnerGame] ✅ Core systems initialized");
         }
@@ -289,31 +273,31 @@ namespace EndlessRunner.Core
         private void FindGameSystems()
         {
             // Find player controller
-            _playerController = FindObjectOfType<PlayerController>();
-            if (_playerController == null)
+            _playerController = FindFirstObjectByType<PlayerController>();
+            if (_playerController != null)
             {
-                Debug.LogWarning("[EndlessRunnerGame] ⚠️ No PlayerController found in scene!");
+                _playerController.Initialize(_eventBus);
             }
             
             // Find world generator
-            _worldGenerator = FindObjectOfType<WorldGenerator>();
-            if (_worldGenerator == null)
+            _worldGenerator = FindFirstObjectByType<WorldGenerator>();
+            if (_worldGenerator != null)
             {
-                Debug.LogWarning("[EndlessRunnerGame] ⚠️ No WorldGenerator found in scene!");
+                _worldGenerator.Initialize(_eventBus);
             }
             
             // Find obstacle manager
-            _obstacleManager = FindObjectOfType<ObstacleManager>();
-            if (_obstacleManager == null)
+            _obstacleManager = FindFirstObjectByType<ObstacleManager>();
+            if (_obstacleManager != null)
             {
-                Debug.LogWarning("[EndlessRunnerGame] ⚠️ No ObstacleManager found in scene!");
+                _obstacleManager.Initialize(_eventBus);
             }
             
             // Find collectible manager
-            _collectibleManager = FindObjectOfType<CollectibleManager>();
-            if (_collectibleManager == null)
+            _collectibleManager = FindFirstObjectByType<CollectibleManager>();
+            if (_collectibleManager != null)
             {
-                Debug.LogWarning("[EndlessRunnerGame] ⚠️ No CollectibleManager found in scene!");
+                _collectibleManager.Initialize(_eventBus);
             }
             
             Debug.Log("[EndlessRunnerGame] ✅ Game systems found");
@@ -325,46 +309,44 @@ namespace EndlessRunner.Core
         private void InitializeSystems()
         {
             // Initialize state manager
-            _stateManager?.Initialize(_eventBus);
+            _stateManager?.TransitionTo(RunnerGameState.Ready);
             
             // Initialize score manager
-            _scoreManager?.Initialize(_eventBus);
+            _scoreManager?.ResetScore();
             
             // Initialize input manager
-            _inputManager?.Initialize(_eventBus);
+            _inputManager?.ResetInputState();
             
             // Initialize performance manager
-            _performanceManager?.Initialize(_eventBus);
+            _performanceManager?.StartMonitoring();
             
             // Initialize error handler
-            _errorHandler?.Initialize(_eventBus);
+            _errorHandler?.SetLoggingEnabled(_enableDebugLogging);
             
             Debug.Log("[EndlessRunnerGame] ✅ All systems initialized");
         }
         
         /// <summary>
-        /// Subscribe to events
+        /// Subscribe to game events
         /// </summary>
         private void SubscribeToEvents()
         {
-            if (_eventBus == null) return;
-            
-            // Subscribe to game state changes
+            // Subscribe to state changes
             _gameStateSubscription = _eventBus.Subscribe<StateChangedEvent<RunnerGameState>>(OnGameStateChanged);
             
-            // Subscribe to player death
+            // Subscribe to player events
             _playerDeathSubscription = _eventBus.Subscribe<PlayerDeathEvent>(OnPlayerDeath);
             
-            // Subscribe to score updates
-            _scoreUpdateSubscription = _eventBus.Subscribe<ScoreChangedEvent>(OnScoreUpdated);
+            // Subscribe to score events
+            _scoreUpdateSubscription = _eventBus.Subscribe<EndlessRunner.Events.ScoreChangedEvent>(OnScoreUpdated);
             
-            // Subscribe to collectible collection
+            // Subscribe to collectible events
             _collectibleCollectedSubscription = _eventBus.Subscribe<CollectibleCollectedEvent>(OnCollectibleCollected);
             
-            // Subscribe to obstacle collision
+            // Subscribe to obstacle events
             _obstacleCollisionSubscription = _eventBus.Subscribe<ObstacleCollisionEvent>(OnObstacleCollision);
             
-            Debug.Log("[EndlessRunnerGame] 📡 Subscribed to game events");
+            Debug.Log("[EndlessRunnerGame] ✅ Event subscriptions created");
         }
         
         /// <summary>
@@ -383,15 +365,20 @@ namespace EndlessRunner.Core
         /// </summary>
         private void UpdateGameSystems()
         {
+            // Update input
+            _inputManager?.ProcessInput();
+            
             // Update performance monitoring
-            _performanceManager?.UpdatePerformance();
+            _performanceManager?.UpdateMonitoring();
             
             // Update error handling
-            _errorHandler?.UpdateErrorHandling();
+            _errorHandler?.SafeExecute(() => {
+                // Safe game update logic
+            }, "GameUpdate");
         }
         
         /// <summary>
-        /// Cleanup game
+        /// Cleanup game resources
         /// </summary>
         private void CleanupGame()
         {
@@ -405,33 +392,42 @@ namespace EndlessRunner.Core
             Debug.Log("[EndlessRunnerGame] 🧹 Game cleanup complete");
         }
         
+        #endregion
+        
         #region Event Handlers
+        
         /// <summary>
         /// Handle game state changes
         /// </summary>
         private void OnGameStateChanged(StateChangedEvent<RunnerGameState> stateEvent)
         {
-            if (_enableDebugLogging)
-            {
-                Debug.Log($"[EndlessRunnerGame] 🎯 Game state changed: {stateEvent.PreviousState} -> {stateEvent.NewState}");
-            }
+            Debug.Log($"[EndlessRunnerGame] 🔄 State changed: {stateEvent.OldState} -> {stateEvent.NewState}");
             
-            // Handle specific state changes
             switch (stateEvent.NewState)
             {
-                case RunnerGameState.GameOver:
-                    EndGame();
+                case RunnerGameState.Ready:
+                    Debug.Log("[EndlessRunnerGame] 🎯 Game ready to start");
+                    break;
+                    
+                case RunnerGameState.Running:
+                    Debug.Log("[EndlessRunnerGame] 🏃 Game running");
+                    break;
+                    
+                case RunnerGameState.Jumping:
+                    Debug.Log("[EndlessRunnerGame] 🦘 Player jumping");
+                    break;
+                    
+                case RunnerGameState.Sliding:
+                    Debug.Log("[EndlessRunnerGame] 🛷 Player sliding");
                     break;
                     
                 case RunnerGameState.Paused:
-                    PauseGame();
+                    Debug.Log("[EndlessRunnerGame] ⏸️ Game paused");
                     break;
                     
-                case RunnerGameState.Playing:
-                    if (!_isGameRunning)
-                    {
-                        ResumeGame();
-                    }
+                case RunnerGameState.GameOver:
+                    Debug.Log("[EndlessRunnerGame] 💀 Game over");
+                    EndGame();
                     break;
             }
         }
@@ -441,7 +437,7 @@ namespace EndlessRunner.Core
         /// </summary>
         private void OnPlayerDeath(PlayerDeathEvent deathEvent)
         {
-            Debug.Log($"[EndlessRunnerGame] 💀 Player died! Final score: {_scoreManager?.CurrentScore ?? 0}");
+            Debug.Log($"[EndlessRunnerGame] 💀 Player died: {deathEvent.DeathCause}");
             
             // End the game
             EndGame();
@@ -450,12 +446,9 @@ namespace EndlessRunner.Core
         /// <summary>
         /// Handle score updates
         /// </summary>
-        private void OnScoreUpdated(ScoreChangedEvent scoreEvent)
+        private void OnScoreUpdated(EndlessRunner.Events.ScoreChangedEvent scoreEvent)
         {
-            if (_enableDebugLogging)
-            {
-                Debug.Log($"[EndlessRunnerGame] 💎 Score updated: {scoreEvent.NewScore} (+{scoreEvent.ScoreChange})");
-            }
+            Debug.Log($"[EndlessRunnerGame] 📊 Score updated: {scoreEvent.NewScore} (+{scoreEvent.ScoreChange})");
         }
         
         /// <summary>
@@ -463,10 +456,7 @@ namespace EndlessRunner.Core
         /// </summary>
         private void OnCollectibleCollected(CollectibleCollectedEvent collectionEvent)
         {
-            if (_enableDebugLogging)
-            {
-                Debug.Log($"[EndlessRunnerGame] 💰 Collectible collected: {collectionEvent.CollectibleType} (+{collectionEvent.PointValue} points)");
-            }
+            Debug.Log($"[EndlessRunnerGame] 💰 Collectible collected: {collectionEvent.CollectibleType} at {collectionEvent.Position}");
         }
         
         /// <summary>
@@ -474,9 +464,13 @@ namespace EndlessRunner.Core
         /// </summary>
         private void OnObstacleCollision(ObstacleCollisionEvent collisionEvent)
         {
-            Debug.Log($"[EndlessRunnerGame] 💥 Obstacle collision: {collisionEvent.ObstacleType} (-{collisionEvent.DamageAmount} health)");
+            Debug.Log($"[EndlessRunnerGame] 💥 Obstacle collision: {collisionEvent.ObstacleType} at {collisionEvent.CollisionPoint}");
+            
+            // Handle damage based on collision force
+            int damageAmount = Mathf.RoundToInt(collisionEvent.CollisionForce);
+            _playerController?.TakeDamage(damageAmount);
         }
-        #endregion
+        
         #endregion
     }
 } 

@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using MiniGameFramework.Core.Architecture;
+using Core.Architecture;
 
-namespace MiniGameFramework.Core.Events
+namespace Core.Events
 {
     /// <summary>
     /// Empty disposable for cases where no actual subscription was made.

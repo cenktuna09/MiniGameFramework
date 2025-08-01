@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Core.Architecture;
-
+using Core.Events;
 namespace Core.Common.InputManagement
 {
     /// <summary>

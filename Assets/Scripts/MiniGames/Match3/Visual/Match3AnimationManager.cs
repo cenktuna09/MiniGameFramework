@@ -117,7 +117,7 @@ namespace MiniGameFramework.MiniGames.Match3.Visual
             Debug.Log($"[Match3AnimationManager] 🎬 Starting gravity animation for column {column}: {tilesToMove.Count} tiles");
             
             // Publish gravity started event
-            eventBus?.Publish(new GravityStartedEvent(column, tilesToMove.Count, this));
+            eventBus?.Publish(new GravityStartedEvent(column, tilesToMove.Count, null));
             
             var startTime = Time.time;
             var completedAnimations = 0;
@@ -131,7 +131,7 @@ namespace MiniGameFramework.MiniGames.Match3.Visual
                 if (visual == null) continue;
                 
                 // Publish tile movement started event
-                eventBus?.Publish(new TileMovementStartedEvent(column, new Vector2Int(column, fromY), new Vector2Int(column, toY), visual, this));
+                eventBus?.Publish(new TileMovementStartedEvent(column, new Vector2Int(column, fromY), new Vector2Int(column, toY), visual, null));
                 
                 var targetPos = new Vector3(column * tileSize, toY * tileSize, 0);
                 
@@ -146,7 +146,7 @@ namespace MiniGameFramework.MiniGames.Match3.Visual
                     
                     // Publish tile movement completed event
                     var duration = Time.time - startTime;
-                    eventBus?.Publish(new TileMovementCompletedEvent(column, new Vector2Int(column, fromY), new Vector2Int(column, toY), visual, duration, this));
+                    eventBus?.Publish(new TileMovementCompletedEvent(column, new Vector2Int(column, fromY), new Vector2Int(column, toY), visual, duration, null));
                     
                     // Remove from active animations
                     activeAnimations[column].Remove(visual);
@@ -157,7 +157,7 @@ namespace MiniGameFramework.MiniGames.Match3.Visual
                     if (completedAnimations >= totalAnimations)
                     {
                         var totalDuration = Time.time - startTime;
-                        eventBus?.Publish(new GravityCompletedEvent(column, totalAnimations, totalDuration, this));
+                        eventBus?.Publish(new GravityCompletedEvent(column, totalAnimations, totalDuration, null));
                         Debug.Log($"[Match3AnimationManager] 🎯 All {totalAnimations} gravity animations completed for column {column}!");
                     }
                 });
@@ -185,7 +185,7 @@ namespace MiniGameFramework.MiniGames.Match3.Visual
             Debug.Log($"[Match3AnimationManager] 🎬 Starting refill animation for column {column}: {tilesToSpawn.Count} tiles");
             
             // Publish refill started event
-            eventBus?.Publish(new RefillStartedEvent(column, tilesToSpawn.Count, this));
+            eventBus?.Publish(new RefillStartedEvent(column, tilesToSpawn.Count, null));
             
             var startTime = Time.time;
             var completedSpawns = 0;
@@ -219,7 +219,7 @@ namespace MiniGameFramework.MiniGames.Match3.Visual
                     if (completedSpawns >= totalSpawns)
                     {
                         var totalDuration = Time.time - startTime;
-                        eventBus?.Publish(new RefillCompletedEvent(column, totalSpawns, totalDuration, this));
+                        eventBus?.Publish(new RefillCompletedEvent(column, totalSpawns, totalDuration, null));
                         Debug.Log($"[Match3AnimationManager] 🎯 All {totalSpawns} refill animations completed for column {column}!");
                     }
                 });

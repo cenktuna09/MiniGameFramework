@@ -1,7 +1,7 @@
 using System.Collections;
 using UnityEngine;
-using MiniGameFramework.Core.Architecture;
-using MiniGameFramework.Core.DI;
+using Core.Architecture;
+using Core.DI;
 using MiniGameFramework.MiniGames.Match3.Data;
 using MiniGameFramework.MiniGames.Match3.Events;
 
@@ -151,7 +151,7 @@ namespace MiniGameFramework.MiniGames.Match3.Utils
             var subscription = eventBus.Subscribe<GravityCompletedEvent>(OnTestGravityCompleted);
             
             // Publish test event
-            eventBus.Publish(new GravityCompletedEvent(0, 5, 1.5f, this));
+            eventBus.Publish(new GravityCompletedEvent(0, 5, 1.5f, null));
             
             yield return new WaitForSeconds(0.1f);
             

@@ -10,6 +10,8 @@ using EndlessRunner.Obstacles;
 using EndlessRunner.Collectibles;
 using EndlessRunner.Performance;
 using EndlessRunner.ErrorHandling;
+using EndlessRunner.Events;
+using Core.Events;
 
 namespace EndlessRunner.Testing
 {
@@ -98,10 +100,10 @@ namespace EndlessRunner.Testing
             Debug.Log("[GameLoopIntegrationTester] 🧪 Starting Game Loop Integration test...");
             
             // Create event bus
-            _eventBus = new Core.Events.EventBus();
+            _eventBus = new EventBus();
             
             // Find game controller
-            _gameController = FindObjectOfType<EndlessRunnerGame>();
+            _gameController = FindFirstObjectByType<EndlessRunnerGame>();
             if (_gameController == null)
             {
                 Debug.LogError("[GameLoopIntegrationTester] ❌ No EndlessRunnerGame found in scene!");
@@ -397,7 +399,7 @@ namespace EndlessRunner.Testing
         
         private void OnScoreChanged(ScoreChangedEvent scoreEvent)
         {
-            Debug.Log($"[GameLoopIntegrationTester] 💎 Score updated: {scoreEvent.NewScore} (+{scoreEvent.ScoreDelta})");
+            Debug.Log($"[GameLoopIntegrationTester] 💎 Score updated: {scoreEvent.NewScore} (+{scoreEvent.ScoreChange})");
         }
         #endregion
         #endregion

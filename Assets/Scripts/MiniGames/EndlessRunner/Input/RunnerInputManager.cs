@@ -132,7 +132,7 @@ namespace EndlessRunner.Input
         /// <summary>
         /// Initialize the input manager
         /// </summary>
-        private void Initialize()
+        protected override void Initialize()
         {
             if (mainCamera == null)
             {

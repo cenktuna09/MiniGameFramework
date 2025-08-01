@@ -1,5 +1,7 @@
 using UnityEngine;
+using Core.Architecture;
 using Core.Common.ScoringManagement;
+using EndlessRunner.Events;
 
 namespace EndlessRunner.Scoring
 {

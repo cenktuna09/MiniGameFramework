@@ -106,6 +106,22 @@ namespace EndlessRunner.Events
         }
     }
     
+    public class ObstacleDestroyedEvent : GameEvent
+    {
+        public GameObject Obstacle { get; private set; }
+        public Vector3 DestroyPosition { get; private set; }
+        public string ObstacleType { get; private set; }
+        public int LaneIndex { get; private set; }
+        
+        public ObstacleDestroyedEvent(GameObject obstacle, Vector3 destroyPosition, string obstacleType, int laneIndex)
+        {
+            Obstacle = obstacle;
+            DestroyPosition = destroyPosition;
+            ObstacleType = obstacleType;
+            LaneIndex = laneIndex;
+        }
+    }
+    
     public class ObstacleAvoidedEvent : GameEvent
     {
         public GameObject Obstacle { get; private set; }

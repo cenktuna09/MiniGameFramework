@@ -100,73 +100,64 @@ namespace EndlessRunner.Config
         public bool EnableObjectPooling => _enableObjectPooling;
         #endregion
         
-        #region Public Methods
+        #region Abstract Method Implementations
+        
         /// <summary>
-        /// Validate runner configuration
+        /// Validate all settings in the configuration
         /// </summary>
-        public override bool ValidateConfig()
+        public override void ValidateSettings()
         {
-            bool isValid = base.ValidateConfig();
+            // Validate base settings first
+            ValidateBaseSettings();
             
             // Validate player settings
             if (_playerSpeed <= 0f)
             {
                 Debug.LogError("[RunnerConfig] ❌ Player speed must be greater than 0");
-                isValid = false;
             }
             
             if (_jumpForce <= 0f)
             {
                 Debug.LogError("[RunnerConfig] ❌ Jump force must be greater than 0");
-                isValid = false;
             }
             
             if (_slideDuration <= 0f)
             {
                 Debug.LogError("[RunnerConfig] ❌ Slide duration must be greater than 0");
-                isValid = false;
             }
             
             // Validate world settings
             if (_chunkLength <= 0f)
             {
                 Debug.LogError("[RunnerConfig] ❌ Chunk length must be greater than 0");
-                isValid = false;
             }
             
             if (_laneCount < 1)
             {
                 Debug.LogError("[RunnerConfig] ❌ Lane count must be at least 1");
-                isValid = false;
             }
             
             // Validate scoring settings
             if (_baseScorePerSecond < 0)
             {
                 Debug.LogError("[RunnerConfig] ❌ Base score per second cannot be negative");
-                isValid = false;
             }
             
             if (_collectibleValue < 0)
             {
                 Debug.LogError("[RunnerConfig] ❌ Collectible value cannot be negative");
-                isValid = false;
             }
             
-            if (isValid)
-            {
-                Debug.Log("[RunnerConfig] ✅ Configuration validated successfully");
-            }
-            
-            return isValid;
+            Debug.Log("[RunnerConfig] ✅ Configuration validated successfully");
         }
         
         /// <summary>
-        /// Reset configuration to defaults
+        /// Reset configuration to default values
         /// </summary>
         public override void ResetToDefaults()
         {
-            base.ResetToDefaults();
+            // Reset base settings first
+            ResetBaseToDefaults();
             
             // Reset player settings
             _playerSpeed = 10f;
@@ -210,21 +201,26 @@ namespace EndlessRunner.Config
             Debug.Log("[RunnerConfig] 🔄 Configuration reset to defaults");
         }
         
+        #endregion
+        
+        #region Public Methods
+        
         /// <summary>
         /// Get configuration summary
         /// </summary>
-        public override string GetConfigSummary()
+        public override string GetConfigurationString()
         {
             return $"Runner Configuration Summary:\n" +
                    $"Game Name: {GameName}\n" +
-                   $"Version: {Version}\n" +
-                   $"Debug Mode: {DebugMode}\n" +
+                   $"Version: {GameVersion}\n" +
+                   $"Debug Mode: {EnableDebugMode}\n" +
                    $"Player Speed: {_playerSpeed}\n" +
                    $"Jump Force: {_jumpForce}\n" +
                    $"World Speed: {_worldSpeed}\n" +
                    $"Lane Count: {_laneCount}\n" +
                    $"Base Score/Second: {_baseScorePerSecond}";
         }
+        
         #endregion
     }
 } 

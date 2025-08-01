@@ -1,6 +1,8 @@
 using UnityEngine;
 using Core.Architecture;
 using EndlessRunner.World;
+using EndlessRunner.Events;
+using Core.Events;
 
 namespace EndlessRunner.Testing
 {
@@ -61,10 +63,10 @@ namespace EndlessRunner.Testing
             Debug.Log("[WorldGeneratorTester] 🧪 Starting World Generator test...");
             
             // Create event bus
-            _eventBus = new Core.Events.EventBus();
+            _eventBus = new EventBus();
             
             // Find or create world generator
-            _worldGenerator = FindObjectOfType<WorldGenerator>();
+            _worldGenerator = FindFirstObjectByType<WorldGenerator>();
             if (_worldGenerator == null)
             {
                 Debug.LogError("[WorldGeneratorTester] ❌ No WorldGenerator found in scene!");
@@ -167,32 +169,32 @@ namespace EndlessRunner.Testing
         #region Event Handlers
         private void OnChunkGenerated(WorldChunkGeneratedEvent chunkEvent)
         {
-            Debug.Log($"[WorldGeneratorTester] 🏗️ Chunk {chunkEvent.ChunkIndex} generated at {chunkEvent.Position}");
+            Debug.Log($"[WorldGeneratorTester] 🏗️ Chunk {chunkEvent.ChunkIndex} generated at {chunkEvent.ChunkPosition}");
             Debug.Log($"[WorldGeneratorTester] 📊 Obstacles: {chunkEvent.ObstacleCount}, Collectibles: {chunkEvent.CollectibleCount}");
         }
         
         private void OnChunkDespawned(WorldChunkDespawnedEvent chunkEvent)
         {
-            Debug.Log($"[WorldGeneratorTester] 🗑️ Chunk {chunkEvent.ChunkIndex} despawned at {chunkEvent.Position}");
+            Debug.Log($"[WorldGeneratorTester] 🗑️ Chunk {chunkEvent.ChunkIndex} despawned at {chunkEvent.ChunkPosition}");
             Debug.Log($"[WorldGeneratorTester] 📏 Distance from player: {chunkEvent.DistanceFromPlayer}");
         }
         
         private void OnDifficultyChanged(WorldDifficultyChangedEvent difficultyEvent)
         {
             Debug.Log($"[WorldGeneratorTester] 📈 Difficulty changed: {difficultyEvent.PreviousDifficulty} → {difficultyEvent.NewDifficulty}");
-            Debug.Log($"[WorldGeneratorTester] ⏱️ Change time: {difficultyEvent.ChangeTime}, Reason: {difficultyEvent.ChangeReason}");
+            Debug.Log($"[WorldGeneratorTester] 📏 Distance: {difficultyEvent.DistanceTraveled}, Reason: {difficultyEvent.DifficultyReason}");
         }
         
         private void OnObstacleSpawned(ObstacleSpawnedEvent obstacleEvent)
         {
-            Debug.Log($"[WorldGeneratorTester] 🚧 Obstacle spawned: {obstacleEvent.ObstacleType} at {obstacleEvent.Position}");
-            Debug.Log($"[WorldGeneratorTester] 🎯 Lane: {obstacleEvent.Lane}, Speed: {obstacleEvent.Speed}");
+            Debug.Log($"[WorldGeneratorTester] 🚧 Obstacle spawned: {obstacleEvent.ObstacleType} at {obstacleEvent.SpawnPosition}");
+            Debug.Log($"[WorldGeneratorTester] 🎯 Lane: {obstacleEvent.LaneIndex}, Speed: {obstacleEvent.ObstacleSpeed}");
         }
         
         private void OnCollectibleSpawned(CollectibleSpawnedEvent collectibleEvent)
         {
-            Debug.Log($"[WorldGeneratorTester] 💰 Collectible spawned: {collectibleEvent.CollectibleType} at {collectibleEvent.Position}");
-            Debug.Log($"[WorldGeneratorTester] 🎯 Lane: {collectibleEvent.Lane}, Value: {collectibleEvent.Value}");
+            Debug.Log($"[WorldGeneratorTester] 💰 Collectible spawned: {collectibleEvent.CollectibleType} at {collectibleEvent.SpawnPosition}");
+            Debug.Log($"[WorldGeneratorTester] 🎯 Lane: {collectibleEvent.LaneIndex}, Value: {collectibleEvent.CollectibleValue}");
         }
         #endregion
         #endregion

@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Core.Architecture;
+using Core.Common.ConfigManagement;
+using Core.Events;
 
 namespace Core.Common.ErrorHandling
 {

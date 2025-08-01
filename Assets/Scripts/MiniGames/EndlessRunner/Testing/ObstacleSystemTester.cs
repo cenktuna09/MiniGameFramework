@@ -1,7 +1,8 @@
 using UnityEngine;
 using Core.Architecture;
 using EndlessRunner.Obstacles;
-
+using EndlessRunner.Events;
+using Core.Events;
 namespace EndlessRunner.Testing
 {
     /// <summary>
@@ -64,7 +65,7 @@ namespace EndlessRunner.Testing
             Debug.Log("[ObstacleSystemTester] 🧪 Starting Obstacle System test...");
             
             // Create event bus
-            _eventBus = new Core.Events.EventBus();
+            _eventBus = new EventBus();
             
             // Find or create obstacle manager
             _obstacleManager = FindObjectOfType<ObstacleManager>();
@@ -192,26 +193,26 @@ namespace EndlessRunner.Testing
         #region Event Handlers
         private void OnObstacleSpawned(ObstacleSpawnedEvent spawnEvent)
         {
-            Debug.Log($"[ObstacleSystemTester] 🚧 Obstacle spawned: {spawnEvent.ObstacleType} at {spawnEvent.Position}");
-            Debug.Log($"[ObstacleSystemTester] 🎯 Lane: {spawnEvent.Lane}, Speed: {spawnEvent.Speed}");
+            Debug.Log($"[ObstacleSystemTester] 🚧 Obstacle spawned: {spawnEvent.ObstacleType} at {spawnEvent.SpawnPosition}");
+            Debug.Log($"[ObstacleSystemTester] 🎯 Lane: {spawnEvent.LaneIndex}, Speed: {spawnEvent.ObstacleSpeed}");
         }
         
         private void OnObstacleCollision(ObstacleCollisionEvent collisionEvent)
         {
             Debug.Log($"[ObstacleSystemTester] 💥 Obstacle collision: {collisionEvent.ObstacleType} with player");
-            Debug.Log($"[ObstacleSystemTester] 💔 Damage: {collisionEvent.DamageAmount}, Lane: {collisionEvent.Lane}");
+            Debug.Log($"[ObstacleSystemTester] 💔 Force: {collisionEvent.CollisionForce}");
         }
         
         private void OnObstacleAvoided(ObstacleAvoidedEvent avoidedEvent)
         {
-            Debug.Log($"[ObstacleSystemTester] ✅ Obstacle avoided: {avoidedEvent.ObstacleType} at {avoidedEvent.Position}");
-            Debug.Log($"[ObstacleSystemTester] 🎯 Lane: {avoidedEvent.Lane}");
+            Debug.Log($"[ObstacleSystemTester] ✅ Obstacle avoided: {avoidedEvent.ObstacleType} at {avoidedEvent.AvoidPosition}");
+            Debug.Log($"[ObstacleSystemTester] 🎯 Method: {avoidedEvent.AvoidMethod}");
         }
         
         private void OnObstacleDestroyed(ObstacleDestroyedEvent destroyedEvent)
         {
-            Debug.Log($"[ObstacleSystemTester] 💥 Obstacle destroyed: {destroyedEvent.ObstacleType} at {destroyedEvent.Position}");
-            Debug.Log($"[ObstacleSystemTester] 🎯 Lane: {destroyedEvent.Lane}");
+            Debug.Log($"[ObstacleSystemTester] 💥 Obstacle destroyed: {destroyedEvent.ObstacleType} at {destroyedEvent.DestroyPosition}");
+            Debug.Log($"[ObstacleSystemTester] 🎯 Lane: {destroyedEvent.LaneIndex}");
         }
         #endregion
         #endregion

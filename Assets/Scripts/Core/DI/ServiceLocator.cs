@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using MiniGameFramework.Core.Architecture;
+using Core.Architecture;
 
-namespace MiniGameFramework.Core.DI
+namespace Core.DI
 {
     /// <summary>
     /// Simple ServiceLocator pattern for dependency management.

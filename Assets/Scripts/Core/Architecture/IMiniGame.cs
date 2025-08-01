@@ -1,7 +1,7 @@
 using System;
 using System.Threading.Tasks;
 
-namespace MiniGameFramework.Core.Architecture
+namespace Core.Architecture
 {
     /// <summary>
     /// Defines the contract for all mini-games in the framework.

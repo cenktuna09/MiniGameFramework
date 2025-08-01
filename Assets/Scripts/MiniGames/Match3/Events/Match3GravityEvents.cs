@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
-using MiniGameFramework.Core.Architecture;
-
+using Core.Architecture;
+using Core.Events;
 namespace MiniGameFramework.MiniGames.Match3.Events
 {
     /// <summary>
@@ -12,7 +12,7 @@ namespace MiniGameFramework.MiniGames.Match3.Events
         public int Column { get; }
         public int TilesToMove { get; }
         
-        public GravityStartedEvent(int column, int tilesToMove, object source = null) 
+        public GravityStartedEvent(int column, int tilesToMove, GameObject source = null) 
             : base(source)
         {
             Column = column;
@@ -29,7 +29,7 @@ namespace MiniGameFramework.MiniGames.Match3.Events
         public int MovedTiles { get; }
         public float Duration { get; }
         
-        public GravityCompletedEvent(int column, int movedTiles, float duration, object source = null) 
+        public GravityCompletedEvent(int column, int movedTiles, float duration, GameObject source = null) 
             : base(source)
         {
             Column = column;
@@ -47,7 +47,7 @@ namespace MiniGameFramework.MiniGames.Match3.Events
         public int TotalMovedTiles { get; }
         public float TotalDuration { get; }
         
-        public AllGravityCompletedEvent(int totalColumns, int totalMovedTiles, float totalDuration, object source = null) 
+        public AllGravityCompletedEvent(int totalColumns, int totalMovedTiles, float totalDuration, GameObject source = null) 
             : base(source)
         {
             TotalColumns = totalColumns;
@@ -64,7 +64,7 @@ namespace MiniGameFramework.MiniGames.Match3.Events
         public int Column { get; }
         public int TilesToSpawn { get; }
         
-        public RefillStartedEvent(int column, int tilesToSpawn, object source = null) 
+        public RefillStartedEvent(int column, int tilesToSpawn, GameObject source = null) 
             : base(source)
         {
             Column = column;
@@ -81,7 +81,7 @@ namespace MiniGameFramework.MiniGames.Match3.Events
         public int SpawnedTiles { get; }
         public float Duration { get; }
         
-        public RefillCompletedEvent(int column, int spawnedTiles, float duration, object source = null) 
+        public RefillCompletedEvent(int column, int spawnedTiles, float duration, GameObject source = null) 
             : base(source)
         {
             Column = column;
@@ -99,7 +99,7 @@ namespace MiniGameFramework.MiniGames.Match3.Events
         public int TotalSpawnedTiles { get; }
         public float TotalDuration { get; }
         
-        public AllRefillCompletedEvent(int totalColumns, int totalSpawnedTiles, float totalDuration, object source = null) 
+        public AllRefillCompletedEvent(int totalColumns, int totalSpawnedTiles, float totalDuration, GameObject source = null) 
             : base(source)
         {
             TotalColumns = totalColumns;
@@ -118,7 +118,7 @@ namespace MiniGameFramework.MiniGames.Match3.Events
         public Vector2Int ToPosition { get; }
         public GameObject Tile { get; }
         
-        public TileMovementStartedEvent(int column, Vector2Int fromPosition, Vector2Int toPosition, GameObject tile, object source = null) 
+        public TileMovementStartedEvent(int column, Vector2Int fromPosition, Vector2Int toPosition, GameObject tile, GameObject source = null) 
             : base(source)
         {
             Column = column;
@@ -139,7 +139,7 @@ namespace MiniGameFramework.MiniGames.Match3.Events
         public GameObject Tile { get; }
         public float Duration { get; }
         
-        public TileMovementCompletedEvent(int column, Vector2Int fromPosition, Vector2Int toPosition, GameObject tile, float duration, object source = null) 
+        public TileMovementCompletedEvent(int column, Vector2Int fromPosition, Vector2Int toPosition, GameObject tile, float duration, GameObject source = null) 
             : base(source)
         {
             Column = column;

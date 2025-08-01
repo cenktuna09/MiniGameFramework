@@ -1,8 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using MiniGameFramework.Core.DI;
-using MiniGameFramework.Core.Architecture;
+using Core.DI;
+using Core.Architecture;
 using MiniGameFramework.MiniGames.Match3.Logic;
 using MiniGameFramework.MiniGames.Match3.Config;
 using MiniGameFramework.MiniGames.Match3.ErrorHandling;

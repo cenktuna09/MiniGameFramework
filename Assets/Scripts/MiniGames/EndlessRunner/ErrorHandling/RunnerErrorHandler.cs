@@ -1,7 +1,13 @@
+using System;
 using UnityEngine;
+using Core.Architecture;
 using Core.Common.ErrorHandling;
+using Core.Common.ConfigManagement;
 using Core.Events;
 using EndlessRunner.Events;
+using EndlessRunner.Config;
+using EndlessRunner.Player;
+using EndlessRunner.World;
 
 namespace EndlessRunner.ErrorHandling
 {
@@ -15,52 +21,87 @@ namespace EndlessRunner.ErrorHandling
         public RunnerErrorHandler(IEventBus eventBus) : base(eventBus)
         {
             Debug.Log("[RunnerErrorHandler] ✅ Runner error handler initialized");
-        }
-        #endregion
-        
-        #region Protected Methods
-        /// <summary>
-        /// Initialize error handling
-        /// </summary>
-        protected override void Initialize()
-        {
-            base.Initialize();
             
             // Set runner-specific error thresholds
             SetMaxErrorCount(10);
-            SetMaxWarningCount(20);
-            SetErrorHistorySize(50);
             
             Debug.Log("[RunnerErrorHandler] 🛡️ Error handling configured for runner");
         }
+        #endregion
+        
+        #region Abstract Method Implementations
         
         /// <summary>
-        /// Handle game-specific errors
+        /// Execute action safely with error handling
         /// </summary>
-        protected override void HandleError(string errorMessage, string errorType, System.Exception exception = null)
+        /// <param name="action">Action to execute</param>
+        /// <param name="operationName">Name of the operation for logging</param>
+        public override void SafeExecute(Action action, string operationName)
         {
-            base.HandleError(errorMessage, errorType, exception);
-            
-            // Publish error event
-            var errorEvent = new GameErrorEvent(errorMessage, errorType, exception);
-            _eventBus.Publish(errorEvent);
-            
-            Debug.LogError($"[RunnerErrorHandler] ❌ Game Error: {errorType} - {errorMessage}");
+            try
+            {
+                action?.Invoke();
+                LogInfo($"Successfully executed: {operationName}");
+            }
+            catch (Exception ex)
+            {
+                LogError($"Error during {operationName}: {ex.Message}");
+                throw;
+            }
         }
         
         /// <summary>
-        /// Handle game-specific warnings
+        /// Validate animation parameters
         /// </summary>
-        protected override void HandleWarning(string warningMessage, string warningType)
+        /// <param name="animationName">Name of the animation</param>
+        /// <param name="target">Target GameObject</param>
+        /// <param name="duration">Animation duration</param>
+        public override void ValidateAnimation(string animationName, GameObject target, float duration)
         {
-            base.HandleWarning(warningMessage, warningType);
+            if (string.IsNullOrEmpty(animationName))
+            {
+                LogError("Animation name is null or empty");
+                return;
+            }
             
-            // Publish warning event
-            var warningEvent = new GameWarningEvent(warningMessage, warningType);
-            _eventBus.Publish(warningEvent);
+            if (target == null)
+            {
+                LogError("Animation target is null");
+                return;
+            }
             
-            Debug.LogWarning($"[RunnerErrorHandler] ⚠️ Game Warning: {warningType} - {warningMessage}");
+            if (duration <= 0f)
+            {
+                LogWarning($"Animation duration is invalid: {duration}");
+                return;
+            }
+            
+            LogInfo($"Animation validation passed: {animationName} on {target.name} for {duration}s");
         }
+        
+        /// <summary>
+        /// Validate configuration settings
+        /// </summary>
+        /// <param name="config">Configuration to validate</param>
+        public override void ValidateConfiguration(BaseGameConfig config)
+        {
+            if (config == null)
+            {
+                LogError("Configuration is null");
+                return;
+            }
+            
+            // Validate as RunnerConfig if possible
+            if (config is RunnerConfig runnerConfig)
+            {
+                ValidateRunnerConfig(runnerConfig);
+            }
+            else
+            {
+                LogWarning("Configuration is not a RunnerConfig");
+            }
+        }
+        
         #endregion
         
         #region Public Methods
@@ -71,26 +112,26 @@ namespace EndlessRunner.ErrorHandling
         {
             if (config == null)
             {
-                HandleError("RunnerConfig is null", "ConfigurationError");
+                LogError("RunnerConfig is null");
                 return false;
             }
             
             // Validate player settings
             if (config.PlayerSpeed <= 0f)
             {
-                HandleWarning("Player speed is zero or negative", "ConfigurationWarning");
+                LogWarning("Player speed is zero or negative");
                 return false;
             }
             
             if (config.JumpForce <= 0f)
             {
-                HandleWarning("Jump force is zero or negative", "ConfigurationWarning");
+                LogWarning("Jump force is zero or negative");
                 return false;
             }
             
             if (config.SlideDuration <= 0f)
             {
-                HandleWarning("Slide duration is zero or negative", "ConfigurationWarning");
+                LogWarning("Slide duration is zero or negative");
                 return false;
             }
             
@@ -105,7 +146,7 @@ namespace EndlessRunner.ErrorHandling
         {
             if (playerController == null)
             {
-                HandleError("PlayerController is null", "ComponentError");
+                LogError("PlayerController is null");
                 return false;
             }
             
@@ -113,14 +154,14 @@ namespace EndlessRunner.ErrorHandling
             var rigidbody = playerController.GetComponent<Rigidbody>();
             if (rigidbody == null)
             {
-                HandleError("PlayerController missing Rigidbody component", "ComponentError");
+                LogError("PlayerController missing Rigidbody component");
                 return false;
             }
             
             var collider = playerController.GetComponent<Collider>();
             if (collider == null)
             {
-                HandleError("PlayerController missing Collider component", "ComponentError");
+                LogError("PlayerController missing Collider component");
                 return false;
             }
             
@@ -135,7 +176,7 @@ namespace EndlessRunner.ErrorHandling
         {
             if (worldGenerator == null)
             {
-                HandleError("WorldGenerator is null", "ComponentError");
+                LogError("WorldGenerator is null");
                 return false;
             }
             
@@ -149,11 +190,10 @@ namespace EndlessRunner.ErrorHandling
         public override string GetErrorStats()
         {
             return $"Runner Error Stats:\n" +
-                   $"Errors: {GetErrorCount()} (Max: {GetMaxErrorCount()})\n" +
-                   $"Warnings: {GetWarningCount()} (Max: {GetMaxWarningCount()})\n" +
-                   $"History Size: {GetErrorHistoryCount()} (Max: {GetErrorHistorySize()})\n" +
-                   $"Last Error: {GetLastError()}\n" +
-                   $"Last Warning: {GetLastWarning()}";
+                   $"Errors: {CurrentErrorCount} (Max: {MaxErrorCount})\n" +
+                   $"History Size: {GetErrorHistory().Count}\n" +
+                   $"Logging Enabled: {EnableLogging}\n" +
+                   $"Validation Enabled: {EnableValidation}";
         }
         #endregion
         
@@ -163,7 +203,15 @@ namespace EndlessRunner.ErrorHandling
         /// </summary>
         public bool SafeExecutePlayerMovement(System.Action movementAction)
         {
-            return SafeExecute(movementAction, "PlayerMovement");
+            try
+            {
+                SafeExecute(movementAction, "PlayerMovement");
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
         
         /// <summary>
@@ -171,7 +219,15 @@ namespace EndlessRunner.ErrorHandling
         /// </summary>
         public bool SafeExecuteWorldGeneration(System.Action generationAction)
         {
-            return SafeExecute(generationAction, "WorldGeneration");
+            try
+            {
+                SafeExecute(generationAction, "WorldGeneration");
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
         
         /// <summary>
@@ -179,7 +235,15 @@ namespace EndlessRunner.ErrorHandling
         /// </summary>
         public bool SafeExecuteScoringUpdate(System.Action scoringAction)
         {
-            return SafeExecute(scoringAction, "ScoringUpdate");
+            try
+            {
+                SafeExecute(scoringAction, "ScoringUpdate");
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
         
         /// <summary>
@@ -187,7 +251,15 @@ namespace EndlessRunner.ErrorHandling
         /// </summary>
         public bool SafeExecuteInputProcessing(System.Action inputAction)
         {
-            return SafeExecute(inputAction, "InputProcessing");
+            try
+            {
+                SafeExecute(inputAction, "InputProcessing");
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
         #endregion
     }

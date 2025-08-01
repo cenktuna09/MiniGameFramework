@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using Core.Architecture;
-
+using Core.DI;
 namespace MiniGameFramework.UI.Panels
 {
     /// <summary>
@@ -86,8 +86,8 @@ namespace MiniGameFramework.UI.Panels
             base.OnPanelInitialized();
             
             // Get dependencies from ServiceLocator
-            _eventBus = Core.DI.ServiceLocator.Instance.Resolve<IEventBus>();
-            _saveSystem = Core.DI.ServiceLocator.Instance.Resolve<Core.SaveSystem.ISaveSystem>();
+            _eventBus = ServiceLocator.Instance.Resolve<IEventBus>();
+            _saveSystem = ServiceLocator.Instance.Resolve<Core.SaveSystem.ISaveSystem>();
             
             SetupButtonListeners();
             ConfigureUI();

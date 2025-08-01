@@ -1,6 +1,7 @@
 using UnityEngine;
-using MiniGameFramework.Core.Architecture;
+using Core.Architecture;
 using MiniGameFramework.MiniGames.Match3.Data;
+using Core.Events;
 
 namespace MiniGameFramework.MiniGames.Match3
 {

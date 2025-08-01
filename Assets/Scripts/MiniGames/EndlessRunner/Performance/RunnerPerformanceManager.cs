@@ -1,7 +1,7 @@
 using UnityEngine;
+using Core.Architecture;
 using Core.Common.PerformanceManagement;
 using Core.Events;
-using EndlessRunner.Events;
 
 namespace EndlessRunner.Performance
 {
@@ -12,9 +12,6 @@ namespace EndlessRunner.Performance
     public class RunnerPerformanceManager : BasePerformanceManager
     {
         #region Private Fields
-        private float _lastFrameTime = 0f;
-        private float _averageFrameTime = 0f;
-        private int _frameCount = 0;
         private float _memoryUsageMB = 0f;
         private float _cpuUsagePercent = 0f;
         #endregion
@@ -26,85 +23,94 @@ namespace EndlessRunner.Performance
         }
         #endregion
         
-        #region Protected Methods
+        #region Abstract Method Implementations
+        
         /// <summary>
         /// Initialize performance monitoring
         /// </summary>
-        protected override void Initialize()
+        public override void Initialize()
         {
-            base.Initialize();
-            
             // Set runner-specific thresholds
-            SetFPSThreshold(30f); // Minimum 30 FPS for runner
+            SetFrameTimeThreshold(1f / 30f); // Minimum 30 FPS for runner
             SetMemoryThreshold(200f); // 200MB memory limit
-            SetCPUThreshold(80f); // 80% CPU usage limit
             
             Debug.Log("[RunnerPerformanceManager] 🎯 Performance thresholds set for runner");
         }
         
         /// <summary>
-        /// Update performance metrics
+        /// Start performance monitoring
         /// </summary>
-        protected override void UpdatePerformanceMetrics()
+        public override void StartMonitoring()
         {
-            // Update frame time
-            float currentFrameTime = Time.unscaledDeltaTime;
-            _averageFrameTime = Mathf.Lerp(_averageFrameTime, currentFrameTime, 0.1f);
-            _lastFrameTime = currentFrameTime;
-            _frameCount++;
+            _isMonitoring = true;
+            ResetCounters();
+            Debug.Log("[RunnerPerformanceManager] 📊 Performance monitoring started");
+        }
+        
+        /// <summary>
+        /// Stop performance monitoring
+        /// </summary>
+        public override void StopMonitoring()
+        {
+            _isMonitoring = false;
+            Debug.Log("[RunnerPerformanceManager] 📊 Performance monitoring stopped");
+        }
+        
+        /// <summary>
+        /// Update performance monitoring
+        /// </summary>
+        public override void UpdateMonitoring()
+        {
+            if (!_isMonitoring) return;
             
-            // Update FPS
-            float currentFPS = 1f / _averageFrameTime;
-            SetCurrentFPS(currentFPS);
+            // Update frame time using base class method
+            UpdateFrameTime();
             
             // Update memory usage
-            _memoryUsageMB = System.GC.GetTotalMemory(false) / (1024f * 1024f);
-            SetCurrentMemoryUsage(_memoryUsageMB);
+            _memoryUsageMB = CurrentMemoryUsage;
             
             // Update CPU usage (simplified)
             _cpuUsagePercent = Mathf.Clamp01(Time.deltaTime / (1f / 60f)) * 100f;
-            SetCurrentCPUUsage(_cpuUsagePercent);
             
-            // Check for performance warnings
-            CheckPerformanceWarnings();
+            // Check for performance issues using base class method
+            CheckPerformance();
         }
+        
+        #endregion
+        
+        #region Protected Methods
         
         /// <summary>
         /// Check for performance warnings and publish events
         /// </summary>
-        protected override void CheckPerformanceWarnings()
+        protected override void CheckPerformance()
         {
-            float currentFPS = GetCurrentFPS();
-            float currentMemory = GetCurrentMemoryUsage();
-            float currentCPU = GetCurrentCPUUsage();
+            // Call base implementation first
+            base.CheckPerformance();
+            
+            // Add runner-specific performance checks
+            float currentFPS = CurrentFPS;
+            float currentMemory = CurrentMemoryUsage;
             
             // FPS warning
-            if (currentFPS < GetFPSThreshold())
+            if (currentFPS < 30f)
             {
-                var warningEvent = new PerformanceWarningEvent("LowFPS", currentFPS, GetFPSThreshold());
-                _eventBus.Publish(warningEvent);
+                var warningEvent = new PerformanceWarningEvent($"Low FPS: {currentFPS:F1}");
+                _eventBus?.Publish(warningEvent);
                 
-                Debug.LogWarning($"[RunnerPerformanceManager] ⚠️ Low FPS detected: {currentFPS:F1} < {GetFPSThreshold():F1}");
+                Debug.LogWarning($"[RunnerPerformanceManager] ⚠️ Low FPS detected: {currentFPS:F1}");
             }
             
             // Memory warning
-            if (currentMemory > GetMemoryThreshold())
+            if (currentMemory > 200f)
             {
-                var warningEvent = new PerformanceWarningEvent("HighMemory", currentMemory, GetMemoryThreshold());
-                _eventBus.Publish(warningEvent);
+                var warningEvent = new PerformanceWarningEvent($"High Memory: {currentMemory:F1}MB");
+                _eventBus?.Publish(warningEvent);
                 
-                Debug.LogWarning($"[RunnerPerformanceManager] ⚠️ High memory usage: {currentMemory:F1}MB > {GetMemoryThreshold():F1}MB");
-            }
-            
-            // CPU warning
-            if (currentCPU > GetCPUThreshold())
-            {
-                var warningEvent = new PerformanceWarningEvent("HighCPU", currentCPU, GetCPUThreshold());
-                _eventBus.Publish(warningEvent);
-                
-                Debug.LogWarning($"[RunnerPerformanceManager] ⚠️ High CPU usage: {currentCPU:F1}% > {GetCPUThreshold():F1}%");
+                Debug.LogWarning($"[RunnerPerformanceManager] ⚠️ High memory usage: {currentMemory:F1}MB");
             }
         }
+        
         #endregion
         
         #region Public Methods
@@ -114,10 +120,10 @@ namespace EndlessRunner.Performance
         public override string GetPerformanceStats()
         {
             return $"Runner Performance Stats:\n" +
-                   $"FPS: {GetCurrentFPS():F1} (Target: {GetFPSThreshold():F1})\n" +
-                   $"Memory: {GetCurrentMemoryUsage():F1}MB (Limit: {GetMemoryThreshold():F1}MB)\n" +
-                   $"CPU: {GetCurrentCPUUsage():F1}% (Limit: {GetCPUThreshold():F1}%)\n" +
-                   $"Frame Time: {_averageFrameTime * 1000f:F1}ms\n" +
+                   $"FPS: {CurrentFPS:F1} (Target: 30.0)\n" +
+                   $"Memory: {CurrentMemoryUsage:F1}MB (Limit: 200.0MB)\n" +
+                   $"CPU: {_cpuUsagePercent:F1}%\n" +
+                   $"Frame Time: {_lastFrameTime * 1000f:F1}ms\n" +
                    $"Frame Count: {_frameCount}";
         }
         
@@ -128,12 +134,12 @@ namespace EndlessRunner.Performance
         {
             return new RunnerPerformanceMetrics
             {
-                CurrentFPS = GetCurrentFPS(),
+                CurrentFPS = CurrentFPS,
                 AverageFrameTime = _averageFrameTime,
-                MemoryUsageMB = GetCurrentMemoryUsage(),
-                CPUUsagePercent = GetCurrentCPUUsage(),
+                MemoryUsageMB = CurrentMemoryUsage,
+                CPUUsagePercent = _cpuUsagePercent,
                 FrameCount = _frameCount,
-                IsPerformanceGood = IsPerformanceGood()
+                IsPerformanceGood = CurrentFPS >= 30f && CurrentMemoryUsage <= 200f
             };
         }
         #endregion

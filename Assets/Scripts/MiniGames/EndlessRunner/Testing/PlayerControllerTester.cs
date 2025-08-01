@@ -1,7 +1,9 @@
 using UnityEngine;
 using Core.Architecture;
+using Core.Events;
 using EndlessRunner.Player;
 using EndlessRunner.Input;
+using EndlessRunner.Events;
 
 namespace EndlessRunner.Testing
 {
@@ -49,7 +51,7 @@ namespace EndlessRunner.Testing
             Debug.Log("[PlayerControllerTester] 🧪 Starting Player Controller test...");
             
             // Create event bus
-            _eventBus = new Core.Events.EventBus();
+            _eventBus = new EventBus();
             
             // Find or create player controller
             _playerController = FindObjectOfType<PlayerController>();

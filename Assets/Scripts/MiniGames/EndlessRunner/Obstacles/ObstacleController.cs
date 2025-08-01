@@ -2,6 +2,8 @@ using UnityEngine;
 using Core.Events;
 using Core.Architecture;
 using EndlessRunner.Events;
+using EndlessRunner.Player;
+using EndlessRunner.Obstacles;
 
 namespace EndlessRunner.Obstacles
 {
@@ -160,7 +162,7 @@ namespace EndlessRunner.Obstacles
             // Publish obstacle destroyed event
             if (_eventBus != null)
             {
-                var destroyedEvent = new ObstacleDestroyedEvent(gameObject, transform.position, _obstacleType, _laneIndex);
+                var destroyedEvent = new ObstacleDestroyedEvent(gameObject, transform.position, _obstacleType.ToString(), _laneIndex);
                 _eventBus.Publish(destroyedEvent);
             }
             
@@ -256,6 +258,7 @@ namespace EndlessRunner.Obstacles
         }
         
         /// <summary>
+        /// <summary>
         /// Get color based on obstacle type
         /// </summary>
         private Color GetObstacleColor()
@@ -266,16 +269,16 @@ namespace EndlessRunner.Obstacles
                     return Color.red;
                     
                 case ObstacleType.Spike:
-                    return Color.darkRed;
+                    return new Color(0.5f, 0f, 0f); // darkRed
                     
                 case ObstacleType.Wall:
-                    return Color.maroon;
+                    return new Color(0.5f, 0f, 0f); // maroon
                     
                 case ObstacleType.Barrier:
-                    return Color.orange;
+                    return new Color(1f, 0.5f, 0f); // orange
                     
                 case ObstacleType.Trap:
-                    return Color.brown;
+                    return new Color(0.6f, 0.4f, 0.2f); // brown
                     
                 default:
                     return _obstacleColor;
@@ -341,7 +344,7 @@ namespace EndlessRunner.Obstacles
                 // Publish collision event
                 if (_eventBus != null)
                 {
-                    var collisionEvent = new ObstacleCollisionEvent(gameObject, player, transform.position, _obstacleType, _damageAmount, _laneIndex);
+                    var collisionEvent = new ObstacleCollisionEvent(gameObject, player, transform.position, _obstacleType.ToString(), _damageAmount);
                     _eventBus.Publish(collisionEvent);
                 }
                 
@@ -383,7 +386,7 @@ namespace EndlessRunner.Obstacles
             // Publish obstacle avoided event
             if (_eventBus != null)
             {
-                var avoidedEvent = new ObstacleAvoidedEvent(gameObject, transform.position, _obstacleType, _laneIndex);
+                var avoidedEvent = new ObstacleAvoidedEvent(gameObject, transform.position, _obstacleType.ToString(), "Jump");
                 _eventBus.Publish(avoidedEvent);
             }
             

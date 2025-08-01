@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Core.Architecture;
+using Core.Events;
 using MiniGameFramework.MiniGames.Match3.Board;
 using MiniGameFramework.MiniGames.Match3.Data;
 using MiniGameFramework.MiniGames.Match3.Config;
@@ -431,7 +432,7 @@ namespace MiniGameFramework.MiniGames.Match3.ErrorHandling
             OnErrorOccurred?.Invoke(exception);
             
             // Publish to event bus if available
-            eventBus?.Publish(new ErrorOccurredEvent(exception, context, this));
+            eventBus?.Publish(new ErrorOccurredEvent(exception, context, null));
         }
         
         /// <summary>
@@ -520,7 +521,7 @@ namespace MiniGameFramework.MiniGames.Match3.ErrorHandling
         public Exception Exception { get; }
         public string Context { get; }
         
-        public ErrorOccurredEvent(Exception exception, string context, object source = null) 
+        public ErrorOccurredEvent(Exception exception, string context, GameObject source = null) 
             : base(source)
         {
             Exception = exception;

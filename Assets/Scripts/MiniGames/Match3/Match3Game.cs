@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using UnityEngine;
 using Core.Architecture;
 using Core.DI;
+using Core.Events;
 using MiniGameFramework.MiniGames.Match3.Data;
 using MiniGameFramework.MiniGames.Match3.Board;
 using MiniGameFramework.MiniGames.Match3.Pooling;

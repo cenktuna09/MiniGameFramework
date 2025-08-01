@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using UnityEngine;
 using Core.Architecture;
 using MiniGameFramework.UI.Panels;
-
+using Core.DI;
 namespace MiniGameFramework.UI
 {
     /// <summary>
@@ -88,7 +88,7 @@ namespace MiniGameFramework.UI
                 return;
 
             // Get EventBus from ServiceLocator
-            _eventBus = Core.DI.ServiceLocator.Instance.Resolve<IEventBus>();
+            _eventBus = ServiceLocator.Instance.Resolve<IEventBus>();
             
             if (_eventBus == null)
             {

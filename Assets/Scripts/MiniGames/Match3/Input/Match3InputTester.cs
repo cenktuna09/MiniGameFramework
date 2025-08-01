@@ -1,7 +1,7 @@
 using System.Collections;
 using UnityEngine;
-using MiniGameFramework.Core.Architecture;
-using MiniGameFramework.Core.DI;
+using Core.Architecture;
+using Core.DI;
 using MiniGameFramework.MiniGames.Match3.Utils;
 
 namespace MiniGameFramework.MiniGames.Match3.Input

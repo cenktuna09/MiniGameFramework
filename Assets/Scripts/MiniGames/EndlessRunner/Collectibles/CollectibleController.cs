@@ -161,7 +161,7 @@ namespace EndlessRunner.Collectibles
             // Publish collection event
             if (_eventBus != null)
             {
-                var collectionEvent = new CollectibleCollectedEvent(gameObject, transform.position, _collectibleType, _pointValue, _laneIndex);
+                var collectionEvent = new CollectibleCollectedEvent(gameObject, null, transform.position, _collectibleType.ToString(), _pointValue, _laneIndex);
                 _eventBus.Publish(collectionEvent);
             }
             
@@ -353,7 +353,7 @@ namespace EndlessRunner.Collectibles
                 // Publish collection event
                 if (_eventBus != null)
                 {
-                    var collectionEvent = new CollectibleCollectedEvent(gameObject, player, transform.position, _collectibleType, _pointValue, _laneIndex);
+                    var collectionEvent = new CollectibleCollectedEvent(gameObject, player, transform.position, _collectibleType.ToString(), _pointValue, _laneIndex);
                     _eventBus.Publish(collectionEvent);
                 }
                 
