@@ -186,6 +186,16 @@ namespace EndlessRunner.Player
         {
             // Unsubscribe from events
             _inputSubscription?.Dispose();
+            
+            // Clear event bus reference
+            _eventBus = null;
+            
+            // Clear component references
+            _rigidbody = null;
+            _collider = null;
+            _animator = null;
+            
+            Debug.Log("[PlayerController] 🧹 Cleanup completed");
         }
         
         private void OnTriggerEnter(Collider other)
@@ -431,6 +441,13 @@ namespace EndlessRunner.Player
         /// </summary>
         private void OnJumpInput(PlayerJumpEvent jumpEvent)
         {
+            // Check if player is dead or destroyed
+            if (_isDead || this == null)
+            {
+                Debug.Log("[PlayerController] ⚠️ Cannot jump - player is dead or destroyed!");
+                return;
+            }
+            
             // Event'ten gelen jump force'u kullan
             float jumpForce = jumpEvent.JumpForce > 0 ? jumpEvent.JumpForce : _jumpForce;
             
@@ -456,6 +473,13 @@ namespace EndlessRunner.Player
             if (_jumpCooldownTimer > 0f)
             {
                 Debug.Log($"[PlayerController] ⚠️ Jump on cooldown! Remaining: {_jumpCooldownTimer:F2}s");
+                return;
+            }
+            
+            // Check if rigidbody is available
+            if (_rigidbody == null)
+            {
+                Debug.LogWarning("[PlayerController] ⚠️ Rigidbody is null, cannot jump!");
                 return;
             }
             
