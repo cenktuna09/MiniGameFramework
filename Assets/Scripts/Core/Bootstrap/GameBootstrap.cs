@@ -3,6 +3,8 @@ using Core.Architecture;
 using Core.Events;
 using MiniGameFramework.Core.SaveSystem;
 using Core.DI;
+using Core.Scene;
+using Core.UI;
 
 namespace MiniGameFramework.Core.Bootstrap
 {
@@ -120,6 +122,22 @@ namespace MiniGameFramework.Core.Bootstrap
             // Register SaveSystem
             serviceLocator.Register<ISaveSystem>(_saveSystem);
             LogIfEnabled("SaveSystem registered with ServiceLocator");
+
+            // Register SceneController if available
+            var sceneController = FindFirstObjectByType<SceneController>();
+            if (sceneController != null)
+            {
+                serviceLocator.Register<SceneController>(sceneController);
+                LogIfEnabled("SceneController registered with ServiceLocator");
+            }
+
+            // Register TransitionManager if available
+            var transitionManager = FindFirstObjectByType<TransitionManager>();
+            if (transitionManager != null)
+            {
+                serviceLocator.Register<TransitionManager>(transitionManager);
+                LogIfEnabled("TransitionManager registered with ServiceLocator");
+            }
 
             LogIfEnabled("All services registered successfully");
         }

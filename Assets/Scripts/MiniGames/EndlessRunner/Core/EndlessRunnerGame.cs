@@ -5,6 +5,7 @@ using Core.Architecture;
 using Core.DI;
 using Core.Events;
 using Core.Common.StateManagement;
+
 using EndlessRunner.StateManagement;
 using EndlessRunner.Input;
 using EndlessRunner.Scoring;
@@ -66,7 +67,6 @@ namespace EndlessRunner.Core
         // Event subscriptions
         private System.IDisposable _gameStateSubscription;
         private System.IDisposable _playerDeathSubscription;
-        private System.IDisposable _scoreUpdateSubscription;
         private System.IDisposable _collectibleCollectedSubscription;
         private System.IDisposable _obstacleCollisionSubscription;
         
@@ -414,7 +414,8 @@ namespace EndlessRunner.Core
         {
             _gameStateSubscription = eventBus.Subscribe<StateChangedEvent<RunnerGameState>>(OnGameStateChanged);
             _playerDeathSubscription = eventBus.Subscribe<PlayerDeathEvent>(OnPlayerDeath);
-            _scoreUpdateSubscription = eventBus.Subscribe<EndlessRunner.Events.ScoreChangedEvent>(OnScoreUpdated);
+            // Note: RunnerScoreManager already publishes Core.Common.ScoringManagement.ScoreChangedEvent
+            // So no need to subscribe to EndlessRunner.Events.ScoreChangedEvent
             _collectibleCollectedSubscription = eventBus.Subscribe<CollectibleCollectedEvent>(OnCollectibleCollected);
             _obstacleCollisionSubscription = eventBus.Subscribe<ObstacleCollisionEvent>(OnObstacleCollision);
             
@@ -463,7 +464,6 @@ namespace EndlessRunner.Core
             // Dispose event subscriptions
             _gameStateSubscription?.Dispose();
             _playerDeathSubscription?.Dispose();
-            _scoreUpdateSubscription?.Dispose();
             _collectibleCollectedSubscription?.Dispose();
             _obstacleCollisionSubscription?.Dispose();
             
@@ -520,16 +520,7 @@ namespace EndlessRunner.Core
             }
         }
         
-        /// <summary>
-        /// Handle score updates
-        /// </summary>
-        private void OnScoreUpdated(EndlessRunner.Events.ScoreChangedEvent scoreEvent)
-        {
-            if (_enableDebugLogging)
-            {
-                Debug.Log($"[EndlessRunnerGame] 📊 Score updated: {scoreEvent.NewScore}");
-            }
-        }
+
         
         /// <summary>
         /// Handle collectible collection

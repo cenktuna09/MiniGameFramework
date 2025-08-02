@@ -19,6 +19,7 @@ using MiniGameFramework.MiniGames.Match3.Config;
 using MiniGameFramework.MiniGames.Match3.ErrorHandling;
 using MiniGameFramework.MiniGames.Match3.Performance;
 using MiniGameFramework.MiniGames.Match3.Visual.Strategies;
+using Core.Common.ScoringManagement; // Add scoring management using statement
 
 namespace MiniGameFramework.MiniGames.Match3
 {
@@ -918,6 +919,9 @@ namespace MiniGameFramework.MiniGames.Match3
                 int matchScore = CalculateMatchScore(matches, cascadeCount);
                 currentScore += matchScore;
                 Debug.Log($"[Match3Game] 💰 Score: +{matchScore} (Total: {currentScore})");
+                
+                // # Publish score change event to update GameMenu
+                eventBus?.Publish(new ScoreChangedEvent(currentScore, matchScore));
                 
                 // # Animate matched tiles
                 Debug.Log("[Match3Game] 🎬 Animating matched tiles...");

@@ -1,6 +1,7 @@
 using UnityEngine;
 using Core.Common.StateManagement;
 using Core.Architecture;
+using System;
 
 namespace EndlessRunner.StateManagement
 {
@@ -19,6 +20,9 @@ namespace EndlessRunner.StateManagement
         public RunnerStateManager(IEventBus eventBus) : base(eventBus)
         {
             Debug.Log("[RunnerStateManager] ✅ Runner state manager initialized");
+            
+            // Subscribe to state changes to publish GameMenu events
+            OnStateChanged += OnRunnerStateChanged;
         }
         
         #endregion
@@ -156,6 +160,21 @@ namespace EndlessRunner.StateManagement
         public string GetCurrentStateString()
         {
             return $"Current State: {CurrentState}";
+        }
+        
+        #endregion
+        
+        #region Private Methods
+        
+        /// <summary>
+        /// Handle state changes and publish GameMenu events
+        /// </summary>
+        /// <param name="newState">New state</param>
+        private void OnRunnerStateChanged(RunnerGameState newState)
+        {
+            // Note: RunnerScoreManager already publishes Core.Common.ScoringManagement.ScoreChangedEvent
+            // So no need to publish additional events here
+            Debug.Log($"[RunnerStateManager] 🔄 State changed to: {newState}");
         }
         
         #endregion
