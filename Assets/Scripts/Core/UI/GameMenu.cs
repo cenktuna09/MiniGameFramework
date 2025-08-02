@@ -7,6 +7,7 @@ using Core.DI;
 using TMPro; // Add TextMeshPro using statement
 using Core.Common.ScoringManagement; // Add scoring management using statement
 using MiniGameFramework.Core.Bootstrap; // Add MiniGameLoader using statement
+using MiniGameFramework.MiniGames.Match3; // Add Match3 namespace for MoveCounterChangedEvent
 
 namespace Core.UI
 {
@@ -33,6 +34,10 @@ namespace Core.UI
         [SerializeField] private TextMeshProUGUI scoreText; // Score text component
         [SerializeField] private string scoreFormat = "Score: {0}"; // Score display format
 
+        [Header("Move Counter Display")]
+        [SerializeField] private TextMeshProUGUI moveLeftText; // Move counter text component
+        [SerializeField] private string moveLeftFormat = "Moves Left: {0}"; // Move counter display format
+
         [Header("Menu Configuration")]
         [SerializeField] private bool _showPauseButton = true;
         [SerializeField] private bool _showBackButton = true;
@@ -43,6 +48,8 @@ namespace Core.UI
         private SceneController _sceneController;
         private bool isPaused = false;
         private int _currentScore = 0; // Current score value
+        private int _currentMovesLeft = 10; // Current moves left value
+        private int _maxMoves = 10; // Maximum moves value
 
         void Awake()
         {
@@ -151,20 +158,39 @@ namespace Core.UI
 
         private void SetupScoreDisplay()
         {
-            // Get EventBus from ServiceLocator and subscribe to score change events
-            var eventBus = ServiceLocator.Instance.Resolve<IEventBus>();
-            if (eventBus != null)
+            if (scoreText != null)
             {
-                eventBus.Subscribe<ScoreChangedEvent>(OnScoreChanged);
-                Debug.Log("[GameMenu] ✅ Subscribed to ScoreChangedEvent via ServiceLocator");
+                // Subscribe to score change events
+                _eventBus.Subscribe<ScoreChangedEvent>(OnScoreChanged);
+                UpdateScoreDisplay();
+                Debug.Log("[GameMenu] ✅ Score display setup complete");
             }
             else
             {
-                Debug.LogWarning("[GameMenu] ⚠️ EventBus not found in ServiceLocator");
+                Debug.LogWarning("[GameMenu] ⚠️ Score text component is null!");
             }
             
-            // Initialize score display
-            UpdateScoreDisplay();
+            if (moveLeftText != null)
+            {
+                // Subscribe to move counter change events
+                _eventBus.Subscribe<MoveCounterChangedEvent>(OnMoveCounterChanged);
+                UpdateMoveCounterDisplay();
+                
+                // Only show move counter in Match3 scene
+                string currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+                bool isMatch3Scene = currentScene == "Match3";
+                moveLeftText.gameObject.SetActive(isMatch3Scene);
+                
+                Debug.Log($"[GameMenu] ✅ Move counter display setup complete. Visible in Match3: {isMatch3Scene}");
+            }
+            else
+            {
+                Debug.LogWarning("[GameMenu] ⚠️ Move counter text component is null!");
+            }
+            
+            // Subscribe to Match3 game over events
+            _eventBus.Subscribe<Match3GameOverEvent>(OnMatch3GameOver);
+            Debug.Log("[GameMenu] ✅ Match3 game over event subscription setup complete");
         }
 
         /// <summary>
@@ -335,12 +361,68 @@ namespace Core.UI
         void OnDestroy()
         {
             // Unsubscribe from events to prevent memory leaks
-            var eventBus = ServiceLocator.Instance.Resolve<IEventBus>();
-            if (eventBus != null)
+            if (_eventBus != null)
             {
-                eventBus.Unsubscribe<ScoreChangedEvent>(OnScoreChanged);
-                Debug.Log("[GameMenu] 🗑️ Unsubscribed from ScoreChangedEvent via ServiceLocator");
+                _eventBus.Unsubscribe<ScoreChangedEvent>(OnScoreChanged);
+                _eventBus.Unsubscribe<MoveCounterChangedEvent>(OnMoveCounterChanged);
+                _eventBus.Unsubscribe<Match3GameOverEvent>(OnMatch3GameOver);
+                Debug.Log("[GameMenu] 🔓 Unsubscribed from events");
             }
+            
+            // Unregister from ServiceLocator
+            if (ServiceLocator.Instance != null)
+            {
+                ServiceLocator.Instance.Unregister<GameMenu>();
+                Debug.Log("[GameMenu] 🔓 Unregistered from ServiceLocator");
+            }
+        }
+
+        /// <summary>
+        /// Handle move counter change events from the scoring system
+        /// </summary>
+        /// <param name="moveCounterEvent">Move counter change event data</param>
+        private void OnMoveCounterChanged(MoveCounterChangedEvent moveCounterEvent)
+        {
+            _currentMovesLeft = moveCounterEvent.MovesLeft;
+            _maxMoves = moveCounterEvent.MaxMoves;
+            UpdateMoveCounterDisplay();
+            
+            Debug.Log($"[GameMenu] 📊 Move counter updated: {_currentMovesLeft}/{_maxMoves}");
+        }
+
+        /// <summary>
+        /// Update the move counter text display
+        /// </summary>
+        private void UpdateMoveCounterDisplay()
+        {
+            if (moveLeftText != null)
+            {
+                moveLeftText.text = string.Format(moveLeftFormat, _currentMovesLeft);
+            }
+        }
+        
+        /// <summary>
+        /// Set the move counter display manually
+        /// </summary>
+        /// <param name="movesLeft">Number of moves left</param>
+        /// <param name="maxMoves">Maximum number of moves</param>
+        public void SetMoveCounter(int movesLeft, int maxMoves)
+        {
+            _currentMovesLeft = movesLeft;
+            _maxMoves = maxMoves;
+            UpdateMoveCounterDisplay();
+            
+            Debug.Log($"[GameMenu] 📊 Move counter set manually: {_currentMovesLeft}/{_maxMoves}");
+        }
+        
+        /// <summary>
+        /// Handle Match3 game over events
+        /// </summary>
+        /// <param name="gameOverEvent">Match3 game over event data</param>
+        private void OnMatch3GameOver(Match3GameOverEvent gameOverEvent)
+        {
+            Debug.Log("[GameMenu] 💀 Match3 game over event received - showing game over panel");
+            ShowGameOverPanel();
         }
     }
 

@@ -50,7 +50,6 @@ namespace MiniGameFramework.MiniGames.Match3.Input
         public void UpdatePossibleSwaps(List<Swap> swaps)
         {
             possibleSwaps = swaps ?? new List<Swap>();
-            Debug.Log($"[Match3InputHandler] 📋 Updated possible swaps: {possibleSwaps.Count} valid swaps");
         }
         
         /// <summary>
@@ -209,12 +208,8 @@ namespace MiniGameFramework.MiniGames.Match3.Input
             int deltaY = Mathf.Abs(swap.tileA.y - swap.tileB.y);
             bool isAdjacent = (deltaX == 1 && deltaY == 0) || (deltaX == 0 && deltaY == 1);
             
-            Debug.Log($"[Match3InputHandler] 🔍 Validating swap: {swap.tileA} ↔ {swap.tileB}");
-            Debug.Log($"[Match3InputHandler] 📏 Adjacent check: {isAdjacent} (deltaX={deltaX}, deltaY={deltaY})");
-            
             if (!isAdjacent)
             {
-                Debug.Log($"[Match3InputHandler] ❌ Swap rejected: Not adjacent");
                 return false;
             }
             
@@ -224,16 +219,7 @@ namespace MiniGameFramework.MiniGames.Match3.Input
                 (s.tileA == swap.tileB && s.tileB == swap.tileA)
             );
             
-            Debug.Log($"[Match3InputHandler] 📋 Possible swaps check: {isValidSwap} (found in {possibleSwaps.Count} valid swaps)");
-            
-            if (!isValidSwap)
-            {
-                Debug.Log($"[Match3InputHandler] ❌ Swap rejected: Not in possible swaps list");
-                return false;
-            }
-            
-            Debug.Log($"[Match3InputHandler] ✅ Swap accepted: Valid match-creating swap");
-            return true;
+            return isValidSwap;
         }
         
         /// <summary>

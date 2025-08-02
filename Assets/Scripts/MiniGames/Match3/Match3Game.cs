@@ -61,6 +61,10 @@ namespace MiniGameFramework.MiniGames.Match3
         [Header("Gameplay Settings")]
         [SerializeField] private float hintDelay = 5f; // Hint after 5 seconds of inactivity
         
+        [Header("Move Counter Settings")]
+        [SerializeField] private int maxMoves = 10; // Maximum number of moves allowed
+        private int movesLeft; // Track remaining moves
+        
         // # Core Game State
         private BoardData currentBoard;
         private GameObject[,] visualTiles;
@@ -171,6 +175,14 @@ namespace MiniGameFramework.MiniGames.Match3
 
             // Initialize game state
             currentScore = 0;
+            movesLeft = maxMoves; // Initialize moves
+            
+            // Publish initial move counter event
+            eventBus?.Publish(new MoveCounterChangedEvent 
+            { 
+                MovesLeft = movesLeft, 
+                MaxMoves = maxMoves 
+            });
 
             // Unlock input
             inputManager?.UnlockInput();
@@ -182,7 +194,7 @@ namespace MiniGameFramework.MiniGames.Match3
             // Start hint timer
             StartHintTimer();
 
-            Debug.Log("[Match3Game] ✅ Game started automatically - Input unlocked and ready to play!");
+            Debug.Log($"[Match3Game] ✅ Game started automatically - Input unlocked and ready to play! Moves: {movesLeft}/{maxMoves}");
         }
         
         protected override void OnPause()
@@ -298,6 +310,23 @@ namespace MiniGameFramework.MiniGames.Match3
             // Handle valid swap
             if (inputResult.SwapDetected && inputResult.IsValidSwap)
             {
+                // Check if we have moves left
+                if (movesLeft <= 0)
+                {
+                    HandleGameOver();
+                    return;
+                }
+                
+                // Decrement moves and publish event
+                movesLeft--;
+                eventBus?.Publish(new MoveCounterChangedEvent 
+                { 
+                    MovesLeft = movesLeft, 
+                    MaxMoves = maxMoves 
+                });
+                
+                Debug.Log($"[Match3Game] 🔄 Valid swap detected. Moves left: {movesLeft}");
+                
                 StartCoroutine(ProcessSwapWithLeanTween(inputResult.DetectedSwap));
             }
             
@@ -307,6 +336,25 @@ namespace MiniGameFramework.MiniGames.Match3
                 var invalidTiles = inputResult.InvalidSwapTiles.Value;
                 ShowInvalidMoveAnimation(invalidTiles.tileA, invalidTiles.tileB);
             }
+        }
+        
+        /// <summary>
+        /// Handle game over when moves are exhausted
+        /// </summary>
+        private void HandleGameOver()
+        {
+            Debug.Log("[Match3Game] 🏁 Game over - no moves left!");
+            
+            // Set game state to GameOver
+            SetState(GameState.GameOver);
+            
+            // Publish game over event
+            eventBus?.Publish(new Match3GameOverEvent());
+            
+            // Lock input
+            inputManager?.LockInput();
+            
+            Debug.Log("[Match3Game] ✅ Game over handled");
         }
 
         #region Core Game Systems
@@ -1605,13 +1653,11 @@ namespace MiniGameFramework.MiniGames.Match3
                         tween.setEase(LeanTweenType.easeInQuad);
                         tween.setOnComplete(() => {
                             completedAnimations++;
-                            Debug.Log($"[Match3Game] ✅ Gravity animation {completedAnimations}/{totalAnimations} completed for column {column}");
                             
                             // Check if all animations are done
                             if (completedAnimations >= totalAnimations && !animationsCompleted)
                             {
                                 animationsCompleted = true;
-                                Debug.Log($"[Match3Game] 🎯 All {totalAnimations} gravity animations completed for column {column}!");
                             }
                         });
                     }
@@ -1626,7 +1672,6 @@ namespace MiniGameFramework.MiniGames.Match3
                     Debug.LogWarning($"[Match3Game] ⚠️ Gravity animations may not have completed for column {column}");
                 }
                 
-                Debug.Log($"[Match3Game] ✅ Batch gravity animations completed for column {column}");
             }
             
             Debug.Log($"[Match3Game] ✅ Gravity applied to column {column}");
@@ -1662,9 +1707,7 @@ namespace MiniGameFramework.MiniGames.Match3
                 var completedSpawns = 0;
                 var totalSpawns = tilesToSpawn.Count;
                 var spawnsCompleted = false;
-                
-                Debug.Log($"[Match3Game] 🎬 Starting DELAYED spawn of {totalSpawns} tiles for column {column}");
-                
+                            
                 // Small delay to ensure gravity is completely finished
                 yield return new WaitForSeconds(0.1f);
                 
@@ -1693,20 +1736,16 @@ namespace MiniGameFramework.MiniGames.Match3
                         // Update position cache
                         foundationManager?.UpdateTilePosition(tileObject, new Vector2Int(column, y));
                         
-                        Debug.Log($"[Match3Game] 🎬 DELAYED spawning tile at ({column},{y}): {tileData.Type}");
-                        
                         // Start LeanTween falling animation
                         var tween = LeanTween.move(tileObject, targetPos, gravityDuration);
                         tween.setEase(LeanTweenType.easeInQuad);
                         tween.setOnComplete(() => {
                             completedSpawns++;
-                            Debug.Log($"[Match3Game] ✅ DELAYED spawn animation {completedSpawns}/{totalSpawns} completed for column {column}");
                             
                             // Check if all spawns are done
                             if (completedSpawns >= totalSpawns && !spawnsCompleted)
                             {
                                 spawnsCompleted = true;
-                                Debug.Log($"[Match3Game] 🎯 All {totalSpawns} DELAYED spawn animations completed for column {column}!");
                             }
                         });
                     }
@@ -1763,5 +1802,22 @@ namespace MiniGameFramework.MiniGames.Match3
         }
         
         #endregion
+    }
+    
+    /// <summary>
+    /// Event published when the move counter changes
+    /// </summary>
+    public class MoveCounterChangedEvent : IEvent
+    {
+        public int MovesLeft { get; set; }
+        public int MaxMoves { get; set; }
+    }
+    
+    /// <summary>
+    /// Event published when Match3 game ends
+    /// </summary>
+    public class Match3GameOverEvent : IEvent
+    {
+        // No additional data needed for now
     }
 }
