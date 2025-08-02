@@ -88,6 +88,10 @@ namespace MiniGameFramework.MiniGames.Match3
         private List<Swap> possibleSwaps = new List<Swap>();
         private Coroutine hintCoroutine;
         
+        // # First tap to start functionality
+        private bool hasGameStarted = false;
+        private bool isWaitingForFirstTap = true;
+        
 
         
         public override bool IsPlayable => currentState == GameState.Ready || currentState == GameState.Playing;
@@ -138,28 +142,19 @@ namespace MiniGameFramework.MiniGames.Match3
                 // # 3. Initialize Components  
                 await InitializeComponents();
                 
-                // # 3. Generate Constraint-Based Board
+                // # 4. Generate Constraint-Based Board
                 GenerateConstraintBasedBoard();
                 
-                // # 4. Calculate Initial Possible Swaps
+                // # 5. Calculate Initial Possible Swaps
                 DetectPossibleSwaps();
                 
                 Debug.Log($"[Match3Game] ✅ Initialization complete! Found {possibleSwaps.Count} possible swaps");
+                Debug.Log("[Match3Game] 🎯 Waiting for first tap to start game...");
                 
-                // # 5. Auto-start game (FIXED)
-                await Task.Yield();
-                Debug.Log($"[Match3Game] Current state after init: {currentState}");
-                if (currentState == GameState.Ready)
-                {
-                    Debug.Log("[Match3Game] �� Auto-starting game...");
-                    SetState(GameState.Playing);
-                    OnStart();
-                    Debug.Log($"[Match3Game] State after auto-start: {currentState}");
-                }
-                else
-                {
-                    Debug.LogWarning($"[Match3Game] Cannot auto-start in state: {currentState}");
-                }
+                // # 6. Keep game in Ready state, wait for first tap
+                // Don't auto-start - let the first tap handle it
+                
+                Debug.Log($"[Match3Game] 📊 Final initialization state: {currentState}, isWaitingForFirstTap: {isWaitingForFirstTap}");
             }
             catch (Exception e)
             {
@@ -175,8 +170,8 @@ namespace MiniGameFramework.MiniGames.Match3
             // Initialize game state
             currentScore = 0;
             
-            // Unlock input
-            inputManager?.UnlockInput();
+            // Note: Input unlocking is handled by first tap logic
+            // inputManager?.UnlockInput(); // Removed - handled by first tap
             
             // Start hint timer
             StartHintTimer();
@@ -260,6 +255,13 @@ namespace MiniGameFramework.MiniGames.Match3
         /// </summary>
         private void Update()
         {
+            // # Always process input when waiting for first tap
+            if (isWaitingForFirstTap)
+            {
+                HandleFirstTapInput();
+                return;
+            }
+            
             if (currentState != GameState.Playing) return;
             
             // Update performance monitoring
@@ -268,6 +270,54 @@ namespace MiniGameFramework.MiniGames.Match3
             // Handle input
             HandleInput();
         }
+        
+        /// <summary>
+        /// Handles the first tap to start the game
+        /// </summary>
+        private void HandleFirstTapInput()
+        {
+            if (inputManager == null) return;
+            
+            // Check for any mouse/touch input
+            if (UnityEngine.Input.GetMouseButtonDown(0) || UnityEngine.Input.GetMouseButtonDown(1) || 
+                UnityEngine.Input.touchCount > 0 && UnityEngine.Input.GetTouch(0).phase == TouchPhase.Began)
+            {
+                Debug.Log("[Match3Game] 🎯 First tap detected! Starting game...");
+                
+                // Start the game
+                StartGameOnFirstTap();
+            }
+        }
+        
+        /// <summary>
+        /// Starts the game on first tap
+        /// </summary>
+        private void StartGameOnFirstTap()
+        {
+            // Set game state to Playing
+            SetState(GameState.Playing);
+            
+            // Unlock input
+            inputManager?.UnlockInput();
+            
+            // Mark game as started
+            hasGameStarted = true;
+            isWaitingForFirstTap = false;
+            
+            // Start hint timer
+            StartHintTimer();
+            
+            Debug.Log("[Match3Game] ✅ Game started on first tap - Input unlocked and ready to play!");
+        }
+        
+        /// <summary>
+        /// Checks if the game is waiting for the first tap to start
+        /// </summary>
+        /// <returns>True if waiting for first tap, false otherwise</returns>
+        public bool IsWaitingForFirstTap()
+        {
+            return isWaitingForFirstTap;
+        }
 
         /// <summary>
         /// Handles input using the new input manager system.
@@ -275,6 +325,13 @@ namespace MiniGameFramework.MiniGames.Match3
         private void HandleInput()
         {
             if (inputManager == null) return;
+            
+            // # CHECK IF INPUT IS LOCKED BEFORE PROCESSING
+            if (isProcessingMatches || isSwapping)
+            {
+                Debug.Log("[Match3Game] 🔒 Input blocked - processing matches or swapping");
+                return;
+            }
             
             var inputResult = inputManager.ProcessInput(isProcessingMatches, isSwapping);
             
@@ -526,6 +583,10 @@ namespace MiniGameFramework.MiniGames.Match3
             isSwapping = true;
             StopHintTimer();
             
+            // # LOCK INPUT AT THE START OF SWAP PROCESSING
+            inputManager?.LockInput();
+            Debug.Log("[Match3Game] 🔒 Input locked at start of swap processing");
+            
             Debug.Log($"[Match3Game] 🔄 Processing swap with LeanTween: {swap.tileA} ↔ {swap.tileB}");
             
             // # 1. Animate tile swap with LeanTween
@@ -552,6 +613,11 @@ namespace MiniGameFramework.MiniGames.Match3
             }
             
             isSwapping = false;
+            
+            // # UNLOCK INPUT AT THE END OF SWAP PROCESSING
+            inputManager?.UnlockInput();
+            Debug.Log("[Match3Game] 🔓 Input unlocked at end of swap processing");
+            
             Debug.Log("[Match3Game] ✅ Swap processing completed");
         }
         
@@ -607,6 +673,10 @@ namespace MiniGameFramework.MiniGames.Match3
                 Debug.LogError("[Match3Game] ❌ One or both visual tiles are null!");
                 yield break;
             }
+            
+            // # LOCK INPUT DURING ANIMATION
+            inputManager?.LockInput();
+            Debug.Log("[Match3Game] 🔒 Input locked during swap animation");
             
             // Calculate target positions
             var posA = new Vector3(swap.tileB.x * tileSize, swap.tileB.y * tileSize, 0);
@@ -671,6 +741,10 @@ namespace MiniGameFramework.MiniGames.Match3
                 foundationManager?.UpdateTilePosition(visualB, swap.tileA);
             }
             
+            // # UNLOCK INPUT AFTER ANIMATION
+            inputManager?.UnlockInput();
+            Debug.Log("[Match3Game] 🔓 Input unlocked after swap animation");
+            
             Debug.Log("[Match3Game] ✅ Optimized swap animation completed");
         }
         
@@ -682,6 +756,10 @@ namespace MiniGameFramework.MiniGames.Match3
             errorHandler?.SafeExecute(() =>
             {
                 Debug.Log("[Match3Game] ❌ Showing invalid move animation");
+                
+                // # LOCK INPUT DURING INVALID MOVE ANIMATION
+                inputManager?.LockInput();
+                Debug.Log("[Match3Game] 🔒 Input locked during invalid move animation");
                 
                 var posA = tileA.transform.position;
                 var posB = tileB.transform.position;
@@ -706,6 +784,10 @@ namespace MiniGameFramework.MiniGames.Match3
                             .setOnComplete(() => {
                                 if (spriteRendererA != null) spriteRendererA.sortingOrder = 0;
                                 if (spriteRendererB != null) spriteRendererB.sortingOrder = 0;
+                                
+                                // # UNLOCK INPUT AFTER INVALID MOVE ANIMATION
+                                inputManager?.UnlockInput();
+                                Debug.Log("[Match3Game] 🔓 Input unlocked after invalid move animation");
                             });
                         LeanTween.move(tileB, posB, 0.2f);
                     });
@@ -810,6 +892,11 @@ namespace MiniGameFramework.MiniGames.Match3
         {
             Debug.Log("[Match3Game] 🎯 Starting cascade match processing...");
             isProcessingMatches = true;
+            
+            // # LOCK INPUT DURING CASCADE PROCESSING
+            inputManager?.LockInput();
+            Debug.Log("[Match3Game] 🔒 Input locked during cascade processing");
+            
             int cascadeCount = 0;
             
             while (true)
@@ -856,6 +943,11 @@ namespace MiniGameFramework.MiniGames.Match3
             }
             
             isProcessingMatches = false;
+            
+            // # UNLOCK INPUT AFTER CASCADE PROCESSING
+            inputManager?.UnlockInput();
+            Debug.Log("[Match3Game] 🔓 Input unlocked after cascade processing");
+            
             Debug.Log($"[Match3Game] ✅ All cascades completed! Total cascades: {cascadeCount}");
         }
         
@@ -1190,6 +1282,10 @@ namespace MiniGameFramework.MiniGames.Match3
                 tileSize,
                 swapDuration
             );
+            
+            // # Lock input by default - will be unlocked on first tap
+            inputManager.LockInput();
+            Debug.Log("[Match3Game] 🔒 Input locked by default - waiting for first tap");
             
             // Initialize game logic manager (Week 3-4)
             gameLogicManager = new Match3GameLogicManager(eventBus);

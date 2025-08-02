@@ -4,7 +4,6 @@ using Core.Events;
 using Core.Architecture;
 using EndlessRunner.Events;
 using Core.DI;
-using EndlessRunner.Factories;
 using EndlessRunner.Obstacles;
 using EndlessRunner.Collectibles;
 
@@ -40,7 +39,6 @@ namespace EndlessRunner.World
         #region Private Fields
         
         private IEventBus _eventBus;
-        private EndlessRunnerFactoryManager _factoryManager;
         private bool _isInitialized = false;
         private Vector3 _originalPosition;
         
@@ -81,17 +79,6 @@ namespace EndlessRunner.World
             _eventBus = eventBus;
             _isInitialized = true;
             
-            // Get factory manager from ServiceLocator
-            _factoryManager = ServiceLocator.Instance.Resolve<EndlessRunnerFactoryManager>();
-            if (_factoryManager == null)
-            {
-                Debug.LogWarning("[EndlessRunnerPlatformController] ⚠️ No Factory Manager found, creating objects directly");
-            }
-            
-            // Publish platform initialized event
-            _eventBus?.Publish(new PlatformInitializedEvent(transform.position, gameObject));
-            
-            Debug.Log($"[EndlessRunnerPlatformController] ✅ Platform initialized at {transform.position}");
         }
         
         /// <summary>
@@ -262,17 +249,8 @@ namespace EndlessRunner.World
                 
                 if (Random.Range(0f, 1f) < _obstacleSpawnChance)
                 {
-                    // Use Factory Manager if available, otherwise fallback to direct instantiation
-                    if (_factoryManager != null && _factoryManager.IsObstacleFactoryRegistered(ObstacleType.Block))
-                    {
-                        // Use factory manager
-                        var obstacle = _factoryManager.CreateObstacle(ObstacleType.Block, spawnPoint.position, spawnPoint.rotation);
-                        if (obstacle != null)
-                        {
-                            obstacle.transform.SetParent(_obstacleHolder != null ? _obstacleHolder.transform : transform);
-                        }
-                    }
-                    else
+                   
+                    
                     {
                         // Fallback to direct instantiation
                         GameObject obstaclePrefab = _obstaclePrefabs[Random.Range(0, _obstaclePrefabs.Length)];
@@ -319,17 +297,7 @@ namespace EndlessRunner.World
                 
                 if (Random.Range(0f, 1f) < _collectibleSpawnChance)
                 {
-                    // Use Factory Manager if available, otherwise fallback to direct instantiation
-                    if (_factoryManager != null && _factoryManager.IsCollectibleFactoryRegistered(CollectibleType.Coin))
-                    {
-                        // Use factory manager
-                        var collectible = _factoryManager.CreateCollectible(CollectibleType.Coin, spawnPoint.position, spawnPoint.rotation);
-                        if (collectible != null)
-                        {
-                            collectible.transform.SetParent(_collectibleHolder != null ? _collectibleHolder.transform : transform);
-                        }
-                    }
-                    else
+
                     {
                         // Fallback to direct instantiation
                         GameObject collectiblePrefab = _collectiblePrefabs[Random.Range(0, _collectiblePrefabs.Length)];

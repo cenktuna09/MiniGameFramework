@@ -125,5 +125,8 @@ MonoBehaviour:
   _pointValue: 10
   _isActive: 1
   _rotationSpeed: 90
-  _bobSpeed: 5
+  _bobSpeed: 0
   _bobHeight: 0.5
+  _jumpSpeed: 1
+  _jumpHeight: 1
+  _enableJumpAnimation: 1

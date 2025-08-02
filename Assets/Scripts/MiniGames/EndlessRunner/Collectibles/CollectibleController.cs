@@ -22,11 +22,6 @@ namespace EndlessRunner.Collectibles
         [SerializeField] private float _bobSpeed = 2f;
         [SerializeField] private float _bobHeight = 0.5f;
         
-        [Header("Jump Animation")]
-        [SerializeField] private float _jumpSpeed = 1f;
-        [SerializeField] private float _jumpHeight = 1f;
-        [SerializeField] private bool _enableJumpAnimation = true;
-        
         #endregion
         
         #region Private Fields
@@ -35,7 +30,6 @@ namespace EndlessRunner.Collectibles
         private Quaternion _initialRotation;
         private bool _isInitialized = false;
         private float _bobTime = 0f;
-        private float _jumpTime = 0f;
         
         #endregion
         
@@ -81,23 +75,6 @@ namespace EndlessRunner.Collectibles
                 float bobOffset = Mathf.Sin(_bobTime) * _bobHeight;
                 transform.position = _initialPosition + Vector3.up * bobOffset;
             }
-            
-            // Jump animation (up and down)
-            if (_enableJumpAnimation && _jumpSpeed > 0f)
-            {
-                _jumpTime += Time.deltaTime * _jumpSpeed;
-                float jumpOffset = Mathf.Sin(_jumpTime) * _jumpHeight;
-                
-                // Combine bob and jump animations
-                Vector3 finalPosition = _initialPosition + Vector3.up * jumpOffset;
-                if (_bobSpeed > 0f)
-                {
-                    float bobOffset = Mathf.Sin(_bobTime) * _bobHeight;
-                    finalPosition += Vector3.up * bobOffset;
-                }
-                
-                transform.position = finalPosition;
-            }
         }
         
         private void OnTriggerEnter(Collider other)
@@ -139,7 +116,6 @@ namespace EndlessRunner.Collectibles
             transform.rotation = _initialRotation;
             _isActive = true;
             _bobTime = 0f;
-            _jumpTime = 0f;
             
             Debug.Log($"[CollectibleController] 🔄 Collectible reset: {_collectibleType}");
         }
@@ -198,28 +174,6 @@ namespace EndlessRunner.Collectibles
         {
             _bobSpeed = bobSpeed;
             _bobHeight = bobHeight;
-        }
-        
-        /// <summary>
-        /// Set the jump animation parameters
-        /// </summary>
-        /// <param name="jumpSpeed">Jump speed</param>
-        /// <param name="jumpHeight">Jump height</param>
-        /// <param name="enableJump">Enable jump animation</param>
-        public void SetJumpParameters(float jumpSpeed, float jumpHeight, bool enableJump = true)
-        {
-            _jumpSpeed = jumpSpeed;
-            _jumpHeight = jumpHeight;
-            _enableJumpAnimation = enableJump;
-        }
-        
-        /// <summary>
-        /// Enable or disable jump animation
-        /// </summary>
-        /// <param name="enable">Enable jump animation</param>
-        public void SetJumpAnimationEnabled(bool enable)
-        {
-            _enableJumpAnimation = enable;
         }
         
         /// <summary>

@@ -6,6 +6,7 @@ using EndlessRunner.Events;
 using EndlessRunner.StateManagement;
 using Core.Common.StateManagement;
 using UnityEngine.InputSystem;
+using EndlessRunner.Player;
 
 namespace EndlessRunner.Input
 {
@@ -18,6 +19,7 @@ namespace EndlessRunner.Input
         #region Private Fields
         private RunnerInputHandler inputHandler;
         private Camera mainCamera;
+        private PlayerController _cachedPlayerController; // Cache player controller reference
         
         // Input state
         private bool isDragging = false;
@@ -42,7 +44,6 @@ namespace EndlessRunner.Input
         // Input state tracking
         private float _lastJumpTime = 0f;
         private float _lastSlideTime = 0f;
-        private float _lastDashTime = 0f;
         private float _lastLateralMovementTime = 0f; // Add lateral movement cooldown
         private bool _isDoubleJumpAvailable = true;
         private bool _isDoubleSlideAvailable = true;
@@ -50,6 +51,7 @@ namespace EndlessRunner.Input
         // Game state tracking
         private bool _gameStarted = false;
         private RunnerGameState _currentGameState = RunnerGameState.Ready;
+        private bool _hasLoggedPlayerDeath = false; // Track if we've logged player death
         #endregion
         
         #region Public Properties
@@ -88,11 +90,19 @@ namespace EndlessRunner.Input
             }
             
             // Check if player is dead - if so, don't process input
-            var playerController = Object.FindFirstObjectByType<EndlessRunner.Player.PlayerController>();
-            if (playerController != null && playerController.IsDead)
+            if (_cachedPlayerController != null && _cachedPlayerController.IsDead)
             {
-                Debug.Log("[RunnerInputManager] 💀 Player is dead, not processing input");
+                if (!_hasLoggedPlayerDeath)
+                {
+                    Debug.Log("[RunnerInputManager] 💀 Player is dead, not processing input");
+                    _hasLoggedPlayerDeath = true;
+                }
                 return; // Don't process input when player is dead
+            }
+            else if (_hasLoggedPlayerDeath)
+            {
+                // Player is alive again, reset the flag
+                _hasLoggedPlayerDeath = false;
             }
             
             var inputResult = inputHandler?.ProcessInput() ?? ProcessInputDirectly();
@@ -132,10 +142,8 @@ namespace EndlessRunner.Input
             _lateralInput = 0f;
             _jumpPressed = false;
             _slidePressed = false;
-            _dashPressed = false;
             _lastJumpTime = 0f;
             _lastSlideTime = 0f;
-            _lastDashTime = 0f;
             _lastLateralMovementTime = 0f; // Reset lateral movement cooldown
             _isDoubleJumpAvailable = true;
             _isDoubleSlideAvailable = true;
@@ -221,8 +229,23 @@ namespace EndlessRunner.Input
                 }
             }
             
+            // Cache player controller reference
+            CachePlayerController();
+            
             // Subscribe to game state changes
             SubscribeToGameState();
+        }
+        
+        /// <summary>
+        /// Cache the player controller reference to avoid repeated FindFirstObjectByType calls
+        /// </summary>
+        private void CachePlayerController()
+        {
+            _cachedPlayerController = Object.FindFirstObjectByType<PlayerController>();
+            if (_cachedPlayerController == null)
+            {
+                Debug.LogWarning("[RunnerInputManager] ⚠️ No PlayerController found in scene!");
+            }
         }
         
         /// <summary>
@@ -318,8 +341,7 @@ namespace EndlessRunner.Input
             if (mainCamera == null) return Vector3.zero;
             
             // Get player's current Z position for consistent world coordinates
-            var playerController = Object.FindFirstObjectByType<EndlessRunner.Player.PlayerController>();
-            float playerZ = playerController != null ? playerController.transform.position.z : 0f;
+            float playerZ = _cachedPlayerController != null ? _cachedPlayerController.transform.position.z : 0f;
             
             var ray = mainCamera.ScreenPointToRay(screenPosition);
             var plane = new Plane(Vector3.up, new Vector3(0f, 0f, playerZ));
@@ -353,8 +375,7 @@ namespace EndlessRunner.Input
                 _jumpPressed = true;
                 
                 // Get player's actual position for jump event
-                var playerController = Object.FindFirstObjectByType<EndlessRunner.Player.PlayerController>();
-                Vector3 playerPosition = playerController != null ? playerController.transform.position : Vector3.zero;
+                Vector3 playerPosition = _cachedPlayerController != null ? _cachedPlayerController.transform.position : Vector3.zero;
                 
                 // Publish jump event
                 var jumpEvent = new PlayerJumpEvent(playerPosition, 0f, 0f, isDoubleJump);
@@ -380,8 +401,7 @@ namespace EndlessRunner.Input
                 _slidePressed = true;
                 
                 // Get player's actual position for slide event
-                var playerController = Object.FindFirstObjectByType<EndlessRunner.Player.PlayerController>();
-                Vector3 playerPosition = playerController != null ? playerController.transform.position : Vector3.zero;
+                Vector3 playerPosition = _cachedPlayerController != null ? _cachedPlayerController.transform.position : Vector3.zero;
                 
                 // Publish slide event
                 var slideEvent = new PlayerSlideEvent(playerPosition, 0f, 0f, true);
@@ -411,8 +431,7 @@ namespace EndlessRunner.Input
                         _lastLateralMovementTime = currentTime;
                         
                         // Get player's actual position for lateral movement event
-                        var playerController = Object.FindFirstObjectByType<EndlessRunner.Player.PlayerController>();
-                        Vector3 playerPosition = playerController != null ? playerController.transform.position : Vector3.zero;
+                        Vector3 playerPosition = _cachedPlayerController != null ? _cachedPlayerController.transform.position : Vector3.zero;
                         
                         // Publish lateral movement event
                         var lateralEvent = new PlayerLateralMovementEvent(_lateralInput, playerPosition, 0f);

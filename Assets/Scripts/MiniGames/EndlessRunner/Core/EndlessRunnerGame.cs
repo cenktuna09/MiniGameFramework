@@ -14,7 +14,6 @@ using EndlessRunner.Events;
 using EndlessRunner.Config;
 using EndlessRunner.Player;
 using EndlessRunner.World;
-using EndlessRunner.Factories;
 using EndlessRunner.Obstacles;
 using EndlessRunner.Collectibles;
 
@@ -56,8 +55,7 @@ namespace EndlessRunner.Core
         private PlayerController _playerController;
         private EndlessRunnerScrollController _scrollController;
         
-        // Factory system
-        private EndlessRunnerFactoryManager _factoryManager;
+
         
         // Game state
         private bool _isInitialized = false;
@@ -90,7 +88,6 @@ namespace EndlessRunner.Core
         public RunnerStateManager StateManager => _stateManager;
         public RunnerScoreManager ScoreManager => _scoreManager;
         public PlayerController PlayerController => _playerController;
-        public EndlessRunnerFactoryManager FactoryManager => _factoryManager;
         
         #endregion
         
@@ -268,10 +265,7 @@ namespace EndlessRunner.Core
                 
                 // Initialize core systems
                 InitializeCoreSystems(_eventBus);
-                
-                // Initialize Factory Manager
-                InitializeFactoryManager();
-                
+            
                 // Find and initialize game systems
                 FindGameSystems(_eventBus);
                 
@@ -365,50 +359,7 @@ namespace EndlessRunner.Core
         /// <summary>
         /// Initialize Factory Manager
         /// </summary>
-        private void InitializeFactoryManager()
-        {
-            // Create factory manager
-            _factoryManager = new EndlessRunnerFactoryManager(
-                obstacleParent: transform.Find("Obstacles"),
-                collectibleParent: transform.Find("Collectibles"),
-                platformParent: transform.Find("Platforms")
-            );
-            
-            // Register obstacle factories
-            if (_obstaclePrefabs != null && _obstaclePrefabs.Length > 0)
-            {
-                foreach (var prefab in _obstaclePrefabs)
-                {
-                    if (prefab != null)
-                    {
-                        _factoryManager.RegisterObstacleFactory(ObstacleType.Block, prefab, 1f, 0.7f);
-                    }
-                }
-            }
-            
-            // Register collectible factories
-            if (_collectiblePrefabs != null && _collectiblePrefabs.Length > 0)
-            {
-                foreach (var prefab in _collectiblePrefabs)
-                {
-                    if (prefab != null)
-                    {
-                        _factoryManager.RegisterCollectibleFactory(CollectibleType.Coin, prefab, 10, 0.8f, 90f);
-                    }
-                }
-            }
-            
-            // Register platform factory
-            if (_platformPrefab != null)
-            {
-                _factoryManager.RegisterPlatformFactory(_platformPrefab, 50f, 10f, 5, 10);
-            }
-            
-            // Register with ServiceLocator
-            RegisterSceneService(_factoryManager);
-            
-            Debug.Log("[EndlessRunnerGame] ✅ Factory Manager initialized");
-        }
+       
         
         /// <summary>
         /// Find and initialize game systems
