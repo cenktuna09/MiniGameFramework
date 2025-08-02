@@ -14,6 +14,7 @@ namespace Core.UI
     {
         [Header("UI References")]
         [SerializeField] private GameObject pausePanel;
+        [SerializeField] private GameObject gameOverPanel;
         [SerializeField] private Button pauseButton;
         [SerializeField] private Button backButton;
         
@@ -22,6 +23,11 @@ namespace Core.UI
         [SerializeField] private Button restartButton;
         [SerializeField] private Button mainMenuButton;
         [SerializeField] private Button nextGameButton;
+        
+        [Header("Game Over Panel Buttons")]
+        [SerializeField] private Button gameOverRestartButton;
+        [SerializeField] private Button gameOverMainMenuButton;
+        [SerializeField] private Button gameOverNextGameButton;
 
         [Header("Score Display")]
         [SerializeField] private TextMeshProUGUI scoreText; // Score text component
@@ -47,6 +53,7 @@ namespace Core.UI
         {
             SetupButtons();
             SetupPauseMenu();
+            SetupGameOverPanel();
             SetupScoreDisplay();
             
             // Diğer sahnelerde GameMenu'nun doğru çalışması için sahneye özel ayarlar
@@ -125,6 +132,21 @@ namespace Core.UI
                 
             if (pausePanel != null)
                 pausePanel.SetActive(false);
+        }
+        
+        private void SetupGameOverPanel()
+        {
+            if (gameOverRestartButton != null)
+                gameOverRestartButton.onClick.AddListener(RestartGame);
+                
+            if (gameOverMainMenuButton != null)
+                gameOverMainMenuButton.onClick.AddListener(GoToMainMenu);
+                
+            if (gameOverNextGameButton != null)
+                gameOverNextGameButton.onClick.AddListener(GoToNextGame);
+                
+            if (gameOverPanel != null)
+                gameOverPanel.SetActive(false);
         }
 
         private void SetupScoreDisplay()
@@ -265,6 +287,34 @@ namespace Core.UI
             // Use MiniGameLoader to properly initialize the next game
             Debug.Log($"[GameMenu] 🎮 Loading next game via MiniGameLoader: {nextGameId}");
             MiniGameLoader.LoadGame(nextGameId);
+        }
+        
+        /// <summary>
+        /// Show game over panel
+        /// </summary>
+        public void ShowGameOverPanel()
+        {
+            if (gameOverPanel != null)
+            {
+                gameOverPanel.SetActive(true);
+                Debug.Log("[GameMenu] 💀 Game over panel shown");
+            }
+            else
+            {
+                Debug.LogWarning("[GameMenu] ⚠️ Game over panel is null!");
+            }
+        }
+        
+        /// <summary>
+        /// Hide game over panel
+        /// </summary>
+        public void HideGameOverPanel()
+        {
+            if (gameOverPanel != null)
+            {
+                gameOverPanel.SetActive(false);
+                Debug.Log("[GameMenu] ✅ Game over panel hidden");
+            }
         }
 
         /// <summary>

@@ -27,26 +27,20 @@ namespace EndlessRunner.Input
         private Vector3 currentMousePosition;
         
         // Configuration
-        private readonly float minSwipeDistance = 50f; // Minimum swipe distance for jump
+        private readonly float minSwipeDistance = 5f; // Minimum swipe distance for jump (reduced from 50f)
         private readonly float movementSensitivity = 1f;
         
         // Input tracking
         private float _lateralInput = 0f;
         private bool _jumpPressed = false;
-        private bool _slidePressed = false;
         private bool _dashPressed = false;
         
         // Input sensitivity and thresholds
         private float _lateralSensitivity = 1f;
         private float _inputThreshold = 0.1f;
-        private float _doubleTapTime = 0.3f;
         
         // Input state tracking
-        private float _lastJumpTime = 0f;
-        private float _lastSlideTime = 0f;
         private float _lastLateralMovementTime = 0f; // Add lateral movement cooldown
-        private bool _isDoubleJumpAvailable = true;
-        private bool _isDoubleSlideAvailable = true;
         
         // Game state tracking
         private bool _hasLoggedPlayerDeath = false; // Track if we've logged player death
@@ -55,7 +49,6 @@ namespace EndlessRunner.Input
         #region Public Properties
         public float LateralInput => _lateralInput;
         public bool IsJumpPressed => _jumpPressed;
-        public bool IsSlidePressed => _slidePressed;
         public bool IsDashPressed => _dashPressed;
         public float LateralSensitivity
         {
@@ -135,12 +128,7 @@ namespace EndlessRunner.Input
         {
             _lateralInput = 0f;
             _jumpPressed = false;
-            _slidePressed = false;
-            _lastJumpTime = 0f;
-            _lastSlideTime = 0f;
             _lastLateralMovementTime = 0f; // Reset lateral movement cooldown
-            _isDoubleJumpAvailable = true;
-            _isDoubleSlideAvailable = true;
             isDragging = false;
             
             Debug.Log("[RunnerInputManager] 🔄 Input state reset");
@@ -251,27 +239,29 @@ namespace EndlessRunner.Input
                     var endPosition = GetWorldPosition(UnityEngine.Input.mousePosition);
                     var swipeDistance = Vector3.Distance(lastMousePosition, UnityEngine.Input.mousePosition);
                     
-                                         // Check for jump gesture (vertical swipe)
-                     if (swipeDistance > minSwipeDistance)
-                     {
-                         var verticalDelta = UnityEngine.Input.mousePosition.y - lastMousePosition.y;
-                         var horizontalDelta = UnityEngine.Input.mousePosition.x - lastMousePosition.x;
-                         
-                         if (Mathf.Abs(verticalDelta) > minSwipeDistance)
-                         {
-                             result.JumpDetected = true;
-                             result.JumpDirection = verticalDelta > 0 ? JumpDirection.Up : JumpDirection.Down;
-                             
-                             Debug.Log($"[RunnerInputManager] 🦘 Jump detected: {result.JumpDirection}");
-                         }
-                         // Check for slide gesture (horizontal swipe down)
-                         else if (Mathf.Abs(horizontalDelta) > minSwipeDistance && verticalDelta < -minSwipeDistance)
-                         {
-                             result.SlideDetected = true;
-                             
-                             Debug.Log($"[RunnerInputManager] 🛷 Slide detected!");
-                         }
-                     }
+                    // Only detect gestures if swipe distance is significant
+                    if (swipeDistance > minSwipeDistance)
+                    {
+                        var verticalDelta = UnityEngine.Input.mousePosition.y - lastMousePosition.y;
+                        var horizontalDelta = UnityEngine.Input.mousePosition.x - lastMousePosition.x;
+                        
+                        // Check for jump gesture (vertical swipe) - only if vertical movement is dominant
+                        if (Mathf.Abs(verticalDelta) > Mathf.Abs(horizontalDelta) && Mathf.Abs(verticalDelta) > minSwipeDistance)
+                        {
+                            result.JumpDetected = true;
+                            result.JumpDirection = verticalDelta > 0 ? JumpDirection.Up : JumpDirection.Down;
+                            
+                            Debug.Log($"[RunnerInputManager] 🦘 Jump detected: {result.JumpDirection} (vertical: {verticalDelta:F1}, horizontal: {horizontalDelta:F1})");
+                        }
+                        else
+                        {
+                            Debug.Log($"[RunnerInputManager] 📏 Swipe distance: {swipeDistance:F1}, but no gesture detected (vertical: {verticalDelta:F1}, horizontal: {horizontalDelta:F1})");
+                        }
+                    }
+                    else
+                    {
+                        Debug.Log($"[RunnerInputManager] 📏 Swipe distance too small: {swipeDistance:F1} < {minSwipeDistance}");
+                    }
                     
                     result.InputEnded = true;
                     result.HasInput = true;
@@ -340,55 +330,22 @@ namespace EndlessRunner.Input
         {
             if (inputResult.JumpDetected)
             {
-                float currentTime = Time.time;
-                bool isDoubleJump = (currentTime - _lastJumpTime) < _doubleTapTime && _isDoubleJumpAvailable;
-                
-                _lastJumpTime = currentTime;
-                if (isDoubleJump)
-                {
-                    _isDoubleJumpAvailable = false;
-                }
-                
                 _jumpPressed = true;
                 
                 // Get player's actual position for jump event
                 Vector3 playerPosition = _cachedPlayerController != null ? _cachedPlayerController.transform.position : Vector3.zero;
                 
                 // Publish jump event
-                var jumpEvent = new PlayerJumpEvent(playerPosition, 0f, 0f, isDoubleJump);
+                var jumpEvent = new PlayerJumpEvent(playerPosition, 0f, 0f, false);
                 _eventBus.Publish(jumpEvent);
                 
                 return new RunnerInputCommand(
                     RunnerInputType.Jump,
-                    new RunnerInputData { IsDoubleJump = isDoubleJump }
+                    new RunnerInputData { }
                 );
             }
             
-            if (inputResult.SlideDetected)
-            {
-                float currentTime = Time.time;
-                bool isDoubleSlide = (currentTime - _lastSlideTime) < _doubleTapTime && _isDoubleSlideAvailable;
-                
-                _lastSlideTime = currentTime;
-                if (isDoubleSlide)
-                {
-                    _isDoubleSlideAvailable = false;
-                }
-                
-                _slidePressed = true;
-                
-                // Get player's actual position for slide event
-                Vector3 playerPosition = _cachedPlayerController != null ? _cachedPlayerController.transform.position : Vector3.zero;
-                
-                // Publish slide event
-                var slideEvent = new PlayerSlideEvent(playerPosition, 0f, 0f, true);
-                _eventBus.Publish(slideEvent);
-                
-                return new RunnerInputCommand(
-                    RunnerInputType.Slide,
-                    new RunnerInputData { IsDoubleSlide = isDoubleSlide }
-                );
-            }
+
             
             if (inputResult.MovementDetected)
             {
@@ -441,7 +398,6 @@ namespace EndlessRunner.Input
     {
         LateralMovement,
         Jump,
-        Slide,
         Dash,
         Pause,
         Resume
@@ -453,8 +409,6 @@ namespace EndlessRunner.Input
     public struct RunnerInputData
     {
         public float LateralInput;
-        public bool IsDoubleJump;
-        public bool IsDoubleSlide;
         public Vector3 Direction;
         public float Intensity;
     }
@@ -505,7 +459,6 @@ namespace EndlessRunner.Input
         public bool InputEnded;
         public bool MovementDetected;
         public bool JumpDetected;
-        public bool SlideDetected;
         public Vector3 StartPosition;
         public Vector3 EndPosition;
         public Vector3 CurrentPosition;

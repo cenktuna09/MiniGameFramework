@@ -66,21 +66,7 @@ namespace EndlessRunner.Events
         }
     }
     
-    public class PlayerSlideEvent : GameEvent
-    {
-        public Vector3 SlidePosition { get; private set; }
-        public float SlideDuration { get; private set; }
-        public float SlideSpeed { get; private set; }
-        public bool IsSliding { get; private set; }
-        
-        public PlayerSlideEvent(Vector3 slidePosition, float slideDuration, float slideSpeed, bool isSliding)
-        {
-            SlidePosition = slidePosition;
-            SlideDuration = slideDuration;
-            SlideSpeed = slideSpeed;
-            IsSliding = isSliding;
-        }
-    }
+
     
     public class PlayerDashEvent : GameEvent
     {

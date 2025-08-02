@@ -44,10 +44,7 @@ namespace EndlessRunner.Player
         /// </summary>
         void Jump();
         
-        /// <summary>
-        /// Make the player slide
-        /// </summary>
-        void Slide();
+
         
         /// <summary>
         /// Move the player horizontally
@@ -100,8 +97,7 @@ namespace EndlessRunner.Player
         [SerializeField] private float _forwardSpeed = 10f;
         [SerializeField] private float _lateralSpeed = 5f;
         [SerializeField] private float _jumpForce = 8f;
-        [SerializeField] private float _slideDuration = 1f;
-        [SerializeField] private float _slideDownForce = 5f; 
+ 
         [SerializeField] private float _jumpCooldown = 0.5f;
         [SerializeField] private int _maxHealth = 3;
         
@@ -111,10 +107,8 @@ namespace EndlessRunner.Player
         
         // Movement state
         private bool _isGrounded = true;
-        private bool _isSliding = false;
         private bool _isJumping = false;
         private bool _isDead = false; // Player ölüm durumu
-        private float _slideTimer = 0f;
         private float _jumpCooldownTimer = 0f; // Jump cooldown timer
         private int _currentHealth;
         private int _currentLane = 1; // 0=left, 1=center, 2=right
@@ -138,7 +132,7 @@ namespace EndlessRunner.Player
         
         #region Public Properties
         public bool IsGrounded => _isGrounded;
-        public bool IsSliding => _isSliding;
+
         public bool IsJumping => _isJumping;
         public bool IsDead => _isDead;
         public int CurrentHealth => _currentHealth;
@@ -178,7 +172,6 @@ namespace EndlessRunner.Player
         
         private void Update()
         {
-            UpdateSlideTimer();
             UpdateJumpCooldown();
             UpdateLaneMovement();
             CheckGrounded();
@@ -297,9 +290,7 @@ namespace EndlessRunner.Player
         /// Move player laterally (left/right) - one lane at a time
         /// </summary>
         public void MoveLaterally(float direction)
-        {
-            if (_isSliding || _isDead) return;
-            
+        {       
             // Only move one lane at a time based on direction sign
             int laneChange = 0;
             if (direction > 0.1f) // Right movement
@@ -337,42 +328,18 @@ namespace EndlessRunner.Player
         public void Jump()
         {
             if (_isDead) return;
+            if (!_isGrounded)
+            {
+                Debug.Log("[PlayerController] ⚠️ Cannot jump - not grounded!");
+                return;
+            }
             PerformJump(_jumpForce);
         }
         
         /// <summary>
         /// Make player slide
         /// </summary>
-        public void Slide()
-        {
-            if (_isSliding || _isJumping || _isDead) 
-            {
-                Debug.Log("[PlayerController] ⚠️ Cannot slide - already sliding, jumping, or dead");
-                return;
-            }
-            
-            _isSliding = true;
-            _slideTimer = _slideDuration;
-            
-            // Apply downward force for sliding
-            _rigidbody.AddForce(Vector3.down * _slideDownForce, ForceMode.Impulse);
-            
-            // Adjust collider for sliding
-            if (_collider is CapsuleCollider capsuleCollider)
-            {
-                capsuleCollider.height *= 0.5f;
-                capsuleCollider.center = new Vector3(0, -0.25f, 0);
-            }
-            
-            // Publish slide event
-            if (_eventBus != null)
-            {
-                var slideEvent = new PlayerSlideEvent(transform.position, _slideDuration, 0f, true);
-                _eventBus.Publish(slideEvent);
-            }
-            
-            Debug.Log($"[PlayerController] 🛷 Player started sliding with downward force: {_slideDownForce}!");
-        }
+
         
         /// <summary>
         /// Take damage
@@ -419,20 +386,11 @@ namespace EndlessRunner.Player
         public void ResetPlayer()
         {
             _currentHealth = _maxHealth;
-            _isSliding = false;
             _isJumping = false;
             _isDead = false; // Reset death state
-            _slideTimer = 0f;
             _jumpCooldownTimer = 0f; // Reset jump cooldown
             _currentLane = 1;
             _targetLaneX = _currentLaneX = 0f;
-            
-            // Reset collider
-            if (_collider is CapsuleCollider capsuleCollider)
-            {
-                capsuleCollider.height = 2f;
-                capsuleCollider.center = Vector3.zero;
-            }
             
             // Reset position
             transform.position = new Vector3(0f, transform.position.y, transform.position.z);
@@ -455,8 +413,7 @@ namespace EndlessRunner.Player
             // Subscribe to jump events
             _eventBus.Subscribe<PlayerJumpEvent>(OnJumpInput);
             
-            // Subscribe to slide events
-            _eventBus.Subscribe<PlayerSlideEvent>(OnSlideInput);
+
             
             Debug.Log("[PlayerController] 📡 Subscribed to input events");
         }
@@ -488,9 +445,10 @@ namespace EndlessRunner.Player
         /// </summary>
         private void PerformJump(float jumpForce)
         {
-            if (!_isGrounded || _isSliding || _isDead) 
+            // Check if player is grounded
+            if (!_isGrounded)
             {
-                Debug.Log("[PlayerController] ⚠️ Cannot jump - not grounded, sliding, or dead");
+                Debug.Log("[PlayerController] ⚠️ Cannot jump - not grounded!");
                 return;
             }
             
@@ -518,16 +476,7 @@ namespace EndlessRunner.Player
             Debug.Log($"[PlayerController] 🦘 Player jumped with force: {jumpForce}!");
         }
         
-        /// <summary>
-        /// Handle slide input
-        /// </summary>
-        private void OnSlideInput(PlayerSlideEvent slideEvent)
-        {
-            if (slideEvent.IsSliding)
-            {
-                Slide();
-            }
-        }
+
         
         /// <summary>
         /// Apply forward movement (CoreMechanics: Player should only move laterally)
@@ -565,20 +514,7 @@ namespace EndlessRunner.Player
             }
         }
         
-        /// <summary>
-        /// Update slide timer
-        /// </summary>
-        private void UpdateSlideTimer()
-        {
-            if (_isSliding)
-            {
-                _slideTimer -= Time.deltaTime;
-                if (_slideTimer <= 0f)
-                {
-                    EndSlide();
-                }
-            }
-        }
+
         
         /// <summary>
         /// Update jump cooldown timer
@@ -591,30 +527,7 @@ namespace EndlessRunner.Player
             }
         }
         
-        /// <summary>
-        /// End sliding state
-        /// </summary>
-        private void EndSlide()
-        {
-            _isSliding = false;
-            _slideTimer = 0f;
-            
-            // Reset collider
-            if (_collider is CapsuleCollider capsuleCollider)
-            {
-                capsuleCollider.height = 2f;
-                capsuleCollider.center = Vector3.zero;
-            }
-            
-            // Publish slide end event
-            if (_eventBus != null)
-            {
-                var slideEvent = new PlayerSlideEvent(transform.position, 0f, 0f, false);
-                _eventBus.Publish(slideEvent);
-            }
-            
-            Debug.Log("[PlayerController] 🛷 Player stopped sliding!");
-        }
+
         
         /// <summary>
         /// Check if player is grounded

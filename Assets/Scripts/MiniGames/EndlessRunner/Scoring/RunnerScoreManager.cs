@@ -38,7 +38,7 @@ namespace EndlessRunner.Scoring
             eventBus.Subscribe<GameStartedEvent>(OnGameStarted);
             eventBus.Subscribe<GameEndedEvent>(OnGameEnded);
             eventBus.Subscribe<PlayerJumpEvent>(OnPlayerJumped);
-            eventBus.Subscribe<PlayerSlideEvent>(OnPlayerSlid);
+
             
             Debug.Log("[RunnerScoreManager] ✅ Runner score manager initialized");
         }
@@ -134,17 +134,7 @@ namespace EndlessRunner.Scoring
             Debug.Log($"[RunnerScoreManager] 🦘 Player jumped (Jump force: {jumpEvent.JumpForce})");
         }
         
-        /// <summary>
-        /// Handle player slide for bonus points
-        /// </summary>
-        private void OnPlayerSlid(PlayerSlideEvent slideEvent)
-        {
-            // Add bonus points for successful slides
-            var slideBonus = Mathf.FloorToInt(slideEvent.SlideDuration * 10f);
-            AddScore(slideBonus);
-            
-            Debug.Log($"[RunnerScoreManager] 🛷 Slide bonus: {slideBonus} points (Slide duration: {slideEvent.SlideDuration}s)");
-        }
+
         
         /// <summary>
         /// Handle game started event

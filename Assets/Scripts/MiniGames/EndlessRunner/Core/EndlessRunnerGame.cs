@@ -17,6 +17,7 @@ using EndlessRunner.Player;
 using EndlessRunner.World;
 using EndlessRunner.Obstacles;
 using EndlessRunner.Collectibles;
+using Core.UI;
 
 namespace EndlessRunner.Core
 {
@@ -75,6 +76,7 @@ namespace EndlessRunner.Core
         private System.IDisposable _playerDeathSubscription;
         private System.IDisposable _collectibleCollectedSubscription;
         private System.IDisposable _obstacleCollisionSubscription;
+        private System.IDisposable _gameEndedSubscription;
         
         #endregion
         
@@ -483,6 +485,7 @@ namespace EndlessRunner.Core
         {
             _gameStateSubscription = eventBus.Subscribe<StateChangedEvent<RunnerGameState>>(OnGameStateChanged);
             _playerDeathSubscription = eventBus.Subscribe<PlayerDeathEvent>(OnPlayerDeath);
+            _gameEndedSubscription = eventBus.Subscribe<GameEndedEvent>(OnGameEnded);
             // Note: RunnerScoreManager already publishes Core.Common.ScoringManagement.ScoreChangedEvent
             // So no need to subscribe to EndlessRunner.Events.ScoreChangedEvent
             _collectibleCollectedSubscription = eventBus.Subscribe<CollectibleCollectedEvent>(OnCollectibleCollected);
@@ -546,6 +549,7 @@ namespace EndlessRunner.Core
             // Dispose event subscriptions
             _gameStateSubscription?.Dispose();
             _playerDeathSubscription?.Dispose();
+            _gameEndedSubscription?.Dispose();
             _collectibleCollectedSubscription?.Dispose();
             _obstacleCollisionSubscription?.Dispose();
             
@@ -623,6 +627,25 @@ namespace EndlessRunner.Core
             if (_enableDebugLogging)
             {
                 Debug.Log($"[EndlessRunnerGame] 💥 Obstacle collision: {collisionEvent.ObstacleType}");
+            }
+        }
+        
+        /// <summary>
+        /// Handle game ended event
+        /// </summary>
+        private void OnGameEnded(GameEndedEvent gameEndedEvent)
+        {
+            Debug.Log($"[EndlessRunnerGame] 💀 Game ended: {gameEndedEvent.EndReason}");
+            
+            // Show game over panel
+            var gameMenu = ServiceLocator.Instance.Resolve<GameMenu>();
+            if (gameMenu != null)
+            {
+                gameMenu.ShowGameOverPanel();
+            }
+            else
+            {
+                Debug.LogWarning("[EndlessRunnerGame] ⚠️ GameMenu not found in ServiceLocator!");
             }
         }
         
