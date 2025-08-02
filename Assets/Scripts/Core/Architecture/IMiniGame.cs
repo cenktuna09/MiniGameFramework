@@ -95,7 +95,7 @@ namespace Core.Architecture
         Initializing,
         
         /// <summary>
-        /// Game is ready to start but not yet active.
+        /// Game is ready to start (initialization complete).
         /// </summary>
         Ready,
         

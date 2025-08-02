@@ -91,11 +91,11 @@ namespace MiniGameFramework.MiniGames.Match3
         
         // # First tap to start functionality
         private bool hasGameStarted = false;
-        private bool isWaitingForFirstTap = true;
+        private bool isWaitingForFirstTap = false; // Game will start automatically
         
 
         
-        public override bool IsPlayable => currentState == GameState.Ready || currentState == GameState.Playing;
+        public override bool IsPlayable => currentState == GameState.Playing;
         
         protected override void Awake()
         {
@@ -123,6 +123,9 @@ namespace MiniGameFramework.MiniGames.Match3
             
             // Initialize the game
             await InitializeAsync();
+            
+            // Call base Start() to transition to Playing state and trigger OnStart()
+            base.Start();
         }
         
         protected override async Task OnInitializeAsync()
@@ -150,12 +153,10 @@ namespace MiniGameFramework.MiniGames.Match3
                 DetectPossibleSwaps();
                 
                 Debug.Log($"[Match3Game] ✅ Initialization complete! Found {possibleSwaps.Count} possible swaps");
-                Debug.Log("[Match3Game] 🎯 Waiting for first tap to start game...");
-                
-                // # 6. Keep game in Ready state, wait for first tap
-                // Don't auto-start - let the first tap handle it
-                
-                Debug.Log($"[Match3Game] 📊 Final initialization state: {currentState}, isWaitingForFirstTap: {isWaitingForFirstTap}");
+                // Removed: Debug.Log("[Match3Game] 🎯 Waiting for first tap to start game...");
+                // Removed: // # 6. Keep game in Ready state, wait for first tap
+                // Removed: // Don't auto-start - let the first tap handle it
+                Debug.Log($"[Match3Game] 📊 Final initialization state: {currentState}"); // isWaitingForFirstTap removed
             }
             catch (Exception e)
             {
@@ -166,18 +167,22 @@ namespace MiniGameFramework.MiniGames.Match3
         
         protected override void OnStart()
         {
-            Debug.Log("[Match3Game] 🚀 Starting Match3 game...");
-            
+            Debug.Log("[Match3Game] 🚀 Starting Match3 game automatically...");
+
             // Initialize game state
             currentScore = 0;
-            
-            // Note: Input unlocking is handled by first tap logic
-            // inputManager?.UnlockInput(); // Removed - handled by first tap
-            
+
+            // Unlock input
+            inputManager?.UnlockInput();
+
+            // Mark game as started
+            hasGameStarted = true;
+            // isWaitingForFirstTap is already false by default
+
             // Start hint timer
             StartHintTimer();
-            
-            Debug.Log("[Match3Game] ✅ Game started successfully");
+
+            Debug.Log("[Match3Game] ✅ Game started automatically - Input unlocked and ready to play!");
         }
         
         protected override void OnPause()
@@ -256,69 +261,17 @@ namespace MiniGameFramework.MiniGames.Match3
         /// </summary>
         private void Update()
         {
-            // # Always process input when waiting for first tap
-            if (isWaitingForFirstTap)
-            {
-                HandleFirstTapInput();
-                return;
-            }
-            
+            // Only process input and update systems if game is playing
             if (currentState != GameState.Playing) return;
-            
+
             // Update performance monitoring
             performanceManager?.UpdateMonitoring();
-            
+
             // Handle input
             HandleInput();
         }
         
-        /// <summary>
-        /// Handles the first tap to start the game
-        /// </summary>
-        private void HandleFirstTapInput()
-        {
-            if (inputManager == null) return;
-            
-            // Check for any mouse/touch input
-            if (UnityEngine.Input.GetMouseButtonDown(0) || UnityEngine.Input.GetMouseButtonDown(1) || 
-                UnityEngine.Input.touchCount > 0 && UnityEngine.Input.GetTouch(0).phase == TouchPhase.Began)
-            {
-                Debug.Log("[Match3Game] 🎯 First tap detected! Starting game...");
-                
-                // Start the game
-                StartGameOnFirstTap();
-            }
-        }
-        
-        /// <summary>
-        /// Starts the game on first tap
-        /// </summary>
-        private void StartGameOnFirstTap()
-        {
-            // Set game state to Playing
-            SetState(GameState.Playing);
-            
-            // Unlock input
-            inputManager?.UnlockInput();
-            
-            // Mark game as started
-            hasGameStarted = true;
-            isWaitingForFirstTap = false;
-            
-            // Start hint timer
-            StartHintTimer();
-            
-            Debug.Log("[Match3Game] ✅ Game started on first tap - Input unlocked and ready to play!");
-        }
-        
-        /// <summary>
-        /// Checks if the game is waiting for the first tap to start
-        /// </summary>
-        /// <returns>True if waiting for first tap, false otherwise</returns>
-        public bool IsWaitingForFirstTap()
-        {
-            return isWaitingForFirstTap;
-        }
+
 
         /// <summary>
         /// Handles input using the new input manager system.
@@ -1016,7 +969,7 @@ namespace MiniGameFramework.MiniGames.Match3
         {
             Debug.Log($"[Match3Game] StartGame called, current state: {currentState}");
             
-            if (currentState == GameState.Ready)
+            if (currentState != GameState.Playing)
             {
                 Debug.Log("[Match3Game] Transitioning from Ready to Playing...");
                 SetState(GameState.Playing);
@@ -1287,9 +1240,8 @@ namespace MiniGameFramework.MiniGames.Match3
                 swapDuration
             );
             
-            // # Lock input by default - will be unlocked on first tap
-            inputManager.LockInput();
-            Debug.Log("[Match3Game] 🔒 Input locked by default - waiting for first tap");
+            // # Input will be unlocked in OnStart() when game begins automatically
+            Debug.Log("[Match3Game] 🔧 Input manager initialized - will be unlocked on game start");
             
             // Initialize game logic manager (Week 3-4)
             gameLogicManager = new Match3GameLogicManager(eventBus);
@@ -1353,6 +1305,7 @@ namespace MiniGameFramework.MiniGames.Match3
             }
             
             Debug.Log("[Match3Game] ✅ Foundation systems and new components initialized");
+            
         }
         
         /// <summary>

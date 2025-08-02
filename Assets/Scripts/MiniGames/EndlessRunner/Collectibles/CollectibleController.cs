@@ -104,7 +104,7 @@ namespace EndlessRunner.Collectibles
             _isActive = true;
             _isInitialized = true;
             
-            Debug.Log($"[CollectibleController] ✅ Collectible initialized: {_collectibleType} at {_initialPosition}");
+//            Debug.Log($"[CollectibleController] ✅ Collectible initialized: {_collectibleType} at {_initialPosition}");
         }
         
         /// <summary>
@@ -117,7 +117,7 @@ namespace EndlessRunner.Collectibles
             _isActive = true;
             _bobTime = 0f;
             
-            Debug.Log($"[CollectibleController] 🔄 Collectible reset: {_collectibleType}");
+           // Debug.Log($"[CollectibleController] 🔄 Collectible reset: {_collectibleType}");
         }
         
         /// <summary>
@@ -215,6 +215,17 @@ namespace EndlessRunner.Collectibles
             // Find EventBus and publish
             var eventBus = ServiceLocator.Instance.Resolve<IEventBus>();
             eventBus?.Publish(collectionEvent);
+            
+            // Also publish CollectiblePickedUpEvent for RunnerScoreManager
+            var pickupEvent = new CollectiblePickedUpEvent(
+                gameObject,
+                playerCollider.gameObject,
+                transform.position,
+                _collectibleType.ToString(),
+                _pointValue,
+                false // isCombo parameter
+            );
+            eventBus?.Publish(pickupEvent);
         }
         
         #endregion

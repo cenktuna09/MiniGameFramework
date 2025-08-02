@@ -49,8 +49,6 @@ namespace EndlessRunner.Input
         private bool _isDoubleSlideAvailable = true;
         
         // Game state tracking
-        private bool _gameStarted = false;
-        private RunnerGameState _currentGameState = RunnerGameState.Ready;
         private bool _hasLoggedPlayerDeath = false; // Track if we've logged player death
         #endregion
         
@@ -72,6 +70,9 @@ namespace EndlessRunner.Input
             this.mainCamera = Camera.main;
             
             Initialize();
+            
+            // Unlock input by default for EndlessRunner
+            UnlockInput();
             
             Debug.Log("[RunnerInputManager] ✅ 3D Input manager initialized");
         }
@@ -110,13 +111,6 @@ namespace EndlessRunner.Input
             {
                 Debug.Log($"[RunnerInputManager] 🎮 Input detected: {inputResult.InputStarted}, {inputResult.InputEnded}, {inputResult.MovementDetected}");
                 
-                // Handle first tap to start the game
-                if (!_gameStarted && inputResult.InputStarted)
-                {
-                    Debug.Log("[RunnerInputManager] 🚀 First tap detected, starting game!");
-                    StartGame();
-                }
-                
                 var command = CreateCommandFromInput(inputResult);
                 if (command != null)
                 {
@@ -153,23 +147,6 @@ namespace EndlessRunner.Input
         }
         
         /// <summary>
-        /// Start the game on first tap
-        /// </summary>
-        private void StartGame()
-        {
-            if (_gameStarted) return;
-            
-            _gameStarted = true;
-            _currentGameState = RunnerGameState.Running;
-            
-            // Publish game started event
-            var gameStartedEvent = new StateChangedEvent<RunnerGameState>(RunnerGameState.Ready, RunnerGameState.Running);
-            _eventBus?.Publish(gameStartedEvent);
-            
-            Debug.Log("[RunnerInputManager] 🚀 Game started on first tap!");
-        }
-        
-        /// <summary>
         /// Subscribe to game state changes
         /// </summary>
         private void SubscribeToGameState()
@@ -182,12 +159,9 @@ namespace EndlessRunner.Input
         /// </summary>
         private void OnGameStateChanged(StateChangedEvent<RunnerGameState> stateEvent)
         {
-            _currentGameState = stateEvent.NewState;
-            
             if (stateEvent.NewState == RunnerGameState.GameOver)
             {
-                // Reset game state when game over
-                _gameStarted = false;
+                // Reset input state when game over
                 ResetInputState();
             }
             
@@ -328,6 +302,9 @@ namespace EndlessRunner.Input
                     // Publish continuous movement event
                     _eventBus?.Publish(new PlayerMovementEvent(worldPos, movementDelta, 0f, 0f));
                 }
+                
+                // Always publish movement event for scoring (even without lateral movement)
+                _eventBus?.Publish(new PlayerMovementEvent(worldPos, Vector3.zero, 0f, 0f));
             }
             
             return result;

@@ -14,6 +14,20 @@ namespace MiniGameFramework.Core.Bootstrap
     /// </summary>
     public class GameBootstrap : MonoBehaviour
     {
+        // Singleton instance
+        private static GameBootstrap _instance;
+        public static GameBootstrap Instance
+        {
+            get
+            {
+                if (_instance == null)
+                {
+                    _instance = FindFirstObjectByType<GameBootstrap>();
+                }
+                return _instance;
+            }
+        }
+        
         [Header("Bootstrap Configuration")]
         [SerializeField] private bool _initializeOnAwake = true;
         [SerializeField] private bool _dontDestroyOnLoad = true;
@@ -33,14 +47,26 @@ namespace MiniGameFramework.Core.Bootstrap
 
         private void Awake()
         {
-            if (_initializeOnAwake)
+            // Singleton pattern - destroy duplicates
+            if (_instance == null)
             {
-                InitializeServices();
-            }
+                _instance = this;
+                
+                if (_initializeOnAwake)
+                {
+                    InitializeServices();
+                }
 
-            if (_dontDestroyOnLoad)
+                if (_dontDestroyOnLoad)
+                {
+                    DontDestroyOnLoad(gameObject);
+                }
+            }
+            else if (_instance != this)
             {
-                DontDestroyOnLoad(gameObject);
+                Debug.LogWarning($"[GameBootstrap] ⚠️ Duplicate GameBootstrap found! Destroying duplicate instance.");
+                Destroy(gameObject);
+                return;
             }
         }
 
@@ -253,18 +279,18 @@ namespace MiniGameFramework.Core.Bootstrap
 
         private void OnDestroy()
         {
-            if (_isInitialized)
+            // Only cleanup if this is the singleton instance
+            if (_instance == this && _isInitialized)
             {
+                UnsubscribeFromMiniGameEvents();
                 CleanupServices();
+                _instance = null;
             }
         }
 
         private void CleanupServices()
         {
             LogIfEnabled("Cleaning up services...");
-
-            // Unsubscribe from mini-game events
-            UnsubscribeFromMiniGameEvents();
 
             // Clear ServiceLocator
             ServiceLocator.Instance.Clear();

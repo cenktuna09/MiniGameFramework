@@ -26,6 +26,12 @@ namespace EndlessRunner.Scoring
         /// <param name="eventBus">Event bus for score notifications</param>
         public RunnerScoreManager(IEventBus eventBus) : base(eventBus)
         {
+            if (eventBus == null)
+            {
+                Debug.LogError("[RunnerScoreManager] ❌ EventBus is null!");
+                return;
+            }
+            
             // Subscribe to runner-specific events
             eventBus.Subscribe<PlayerMovementEvent>(OnPlayerMoved);
             eventBus.Subscribe<CollectiblePickedUpEvent>(OnCollectiblePickedUp);
@@ -95,11 +101,16 @@ namespace EndlessRunner.Scoring
                 _distanceTraveled += distanceDelta;
                 _lastPositionZ = currentPositionZ;
                 
-                // Calculate score based on distance
-                var distanceScore = Mathf.FloorToInt(_distanceTraveled);
-                SetScore(distanceScore);
+                // Calculate score based on distance (every 10 units = 1 point)
+                var distanceScore = Mathf.FloorToInt(_distanceTraveled / 10f);
+                var currentScore = _currentScore;
+                var scoreDelta = distanceScore - currentScore;
                 
-//                Debug.Log($"[RunnerScoreManager] 📊 Distance score: {distanceScore} (Total distance: {_distanceTraveled:F1})");
+                if (scoreDelta > 0)
+                {
+                    AddScore(scoreDelta);
+                    Debug.Log($"[RunnerScoreManager] 📊 Distance score: +{scoreDelta} (Total distance: {_distanceTraveled:F1})");
+                }
             }
         }
         
@@ -115,15 +126,12 @@ namespace EndlessRunner.Scoring
         }
         
         /// <summary>
-        /// Handle player jump for bonus points
+        /// Handle player jump (no bonus points)
         /// </summary>
         private void OnPlayerJumped(PlayerJumpEvent jumpEvent)
         {
-            // Add bonus points for successful jumps
-            var jumpBonus = Mathf.FloorToInt(jumpEvent.JumpForce * 0.5f);
-            AddScore(jumpBonus);
-            
-            Debug.Log($"[RunnerScoreManager] 🦘 Jump bonus: {jumpBonus} points (Jump force: {jumpEvent.JumpForce})");
+            // No bonus points for jumping - just log the jump
+            Debug.Log($"[RunnerScoreManager] 🦘 Player jumped (Jump force: {jumpEvent.JumpForce})");
         }
         
         /// <summary>

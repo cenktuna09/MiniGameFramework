@@ -63,6 +63,12 @@ namespace EndlessRunner.Core
         private bool _isGameRunning = false;
         private float _gameStartTime = 0f;
         private float _currentGameTime = 0f;
+        private float _lastScoreTime = 0f; // Track last time score was added
+        private float _scoreInterval = 1f; // Add score every second
+        private int _survivalScore = 10; // Points per second of survival
+        private Vector3 _lastPlayerPosition = Vector3.zero; // Track last player position
+        private float _movementUpdateInterval = 0.1f; // Update movement every 100ms
+        private float _lastMovementUpdateTime = 0f; // Track last movement update
         
         // Event subscriptions
         private System.IDisposable _gameStateSubscription;
@@ -95,24 +101,30 @@ namespace EndlessRunner.Core
         
         protected override void Awake()
         {
-            Debug.Log("[EndlessRunnerGame] 🔧 Awake called");
+            Debug.Log("[EndlessRunnerGame] 🔧 Awake called - calling base.Awake()");
             base.Awake();
-            // Don't initialize here - wait for OnInitializeAsync()
+            Debug.Log("[EndlessRunnerGame] ✅ Awake completed - starting initialization");
+            
+            // Start initialization immediately
+            _ = InitializeAsync();
         }
         
         private new void Start()
         {
-            OnUnityStart();
-        }
-        
-        private void OnUnityStart()
-        {
-            if (_autoStartGame)
+            Debug.Log("[EndlessRunnerGame] 🚀 Start called - checking if ready to start");
+            
+            // Only call base.Start() if we're in Ready state (after initialization)
+            if (CurrentState == GameState.Ready)
             {
-                StartGame();
+                Debug.Log("[EndlessRunnerGame] ✅ Ready state detected - calling base.Start()");
+                base.Start();
+            }
+            else
+            {
+                Debug.LogWarning($"[EndlessRunnerGame] ⚠️ Not in Ready state: {CurrentState} - waiting for initialization");
             }
         }
-        
+    
         private void Update()
         {
             // Always process input, even when game is not running (for first tap to start)
@@ -144,33 +156,65 @@ namespace EndlessRunner.Core
         /// </summary>
         public void StartGame()
         {
+            Debug.Log("[EndlessRunnerGame] 🚀 StartGame called - checking current state");
+            
             if (_isGameRunning)
             {
                 Debug.LogWarning("[EndlessRunnerGame] ⚠️ Game already running!");
                 return;
             }
             
-            _isGameRunning = true;
-            _gameStartTime = Time.time;
-            _currentGameTime = 0f;
+            Debug.Log("[EndlessRunnerGame] ✅ Game not running, proceeding with start");
             
-            // Initialize systems if not already done
+            // Ensure systems are initialized
             if (!_isInitialized)
             {
                 Debug.LogWarning("[EndlessRunnerGame] ⚠️ Game not initialized, initializing now");
+                
+                // Get EventBus from ServiceLocator if not available
+                if (_eventBus == null)
+                {
+                    _eventBus = ServiceLocator.Instance.Resolve<IEventBus>();
+                    if (_eventBus == null)
+                    {
+                        Debug.LogError("[EndlessRunnerGame] ❌ No EventBus found in ServiceLocator!");
+                        return;
+                    }
+                }
+                
                 InitializeCoreSystems(_eventBus);
+                FindGameSystems(_eventBus);
+                InitializeSystems();
+                SubscribeToEvents(_eventBus);
+                _isInitialized = true;
             }
+            
+            // Ensure input manager is available and unlocked
+            if (_inputManager == null)
+            {
+                Debug.LogError("[EndlessRunnerGame] ❌ InputManager not found!");
+                return;
+            }
+            
+            Debug.Log("[EndlessRunnerGame] ✅ All systems ready, starting game");
+            
+            _isGameRunning = true;
+            _gameStartTime = Time.time;
+            _currentGameTime = 0f;
+            _lastScoreTime = Time.time; // Reset score timer
+            _lastPlayerPosition = _playerController != null ? _playerController.transform.position : Vector3.zero;
+            _lastMovementUpdateTime = Time.time;
             
             // Start game state
             _stateManager?.TransitionTo(RunnerGameState.Running);
             
             // Unlock input for new game
-            _inputManager?.UnlockInput();
+            _inputManager.UnlockInput();
             
             // Publish game started event
             _eventBus?.Publish(new GameStartedEvent(Time.time));
             
-            Debug.Log("[EndlessRunnerGame] 🎮 Game started");
+            Debug.Log("[EndlessRunnerGame] 🎮 Game started successfully");
         }
         
         /// <summary>
@@ -231,6 +275,9 @@ namespace EndlessRunner.Core
         {
             _isGameRunning = false;
             _currentGameTime = 0f;
+            _lastScoreTime = 0f; // Reset score timer
+            _lastPlayerPosition = Vector3.zero;
+            _lastMovementUpdateTime = 0f;
             
             // Reset all systems
             _stateManager?.TransitionTo(RunnerGameState.Ready);
@@ -262,17 +309,26 @@ namespace EndlessRunner.Core
                     Debug.LogError("[EndlessRunnerGame] ❌ No EventBus found in ServiceLocator!");
                     return;
                 }
+                Debug.Log("[EndlessRunnerGame] ✅ EventBus resolved from ServiceLocator");
                 
                 // Initialize core systems
+                Debug.Log("[EndlessRunnerGame] 🔧 Initializing core systems...");
                 InitializeCoreSystems(_eventBus);
             
                 // Find and initialize game systems
+                Debug.Log("[EndlessRunnerGame] 🔍 Finding game systems...");
                 FindGameSystems(_eventBus);
                 
+                // Unlock input after initialization
+                Debug.Log("[EndlessRunnerGame] 🔓 Unlocking input after initialization...");
+                _inputManager?.UnlockInput();
+                
                 // Initialize all systems
+                Debug.Log("[EndlessRunnerGame] ⚙️ Initializing all systems...");
                 InitializeSystems();
                 
                 // Subscribe to events
+                Debug.Log("[EndlessRunnerGame] 📡 Subscribing to events...");
                 SubscribeToEvents(_eventBus);
                 
                 _isInitialized = true;
@@ -290,13 +346,26 @@ namespace EndlessRunner.Core
         
         protected override void OnStart()
         {
+            Debug.Log("[EndlessRunnerGame] 🎮 OnStart called - checking initialization and game state");
+            
             if (!_isInitialized)
             {
                 Debug.LogError("[EndlessRunnerGame] ❌ Game not initialized!");
                 return;
             }
             
-            StartGame();
+            Debug.Log($"[EndlessRunnerGame] ✅ Game is initialized, current game running state: {_isGameRunning}");
+            
+            // Auto-start the game when framework calls OnStart
+            if (!_isGameRunning)
+            {
+                Debug.Log("[EndlessRunnerGame] 🎮 Framework OnStart called - starting game automatically");
+                StartGame();
+            }
+            else
+            {
+                Debug.Log("[EndlessRunnerGame] ⚠️ Game is already running, skipping auto-start");
+            }
         }
         
         protected override void OnPause()
@@ -434,6 +503,18 @@ namespace EndlessRunner.Core
             if (_isGameRunning)
             {
                 _currentGameTime = Time.time - _gameStartTime;
+                
+                // Add survival score every second
+                if (Time.time - _lastScoreTime >= _scoreInterval)
+                {
+                    _scoreManager?.AddScore(_survivalScore);
+                    _lastScoreTime = Time.time;
+                    
+                    if (_enableDebugLogging)
+                    {
+                        Debug.Log($"[EndlessRunnerGame] ⏰ Survival score: +{_survivalScore} (Total time: {_currentGameTime:F1}s)");
+                    }
+                }
             }
         }
         
@@ -451,6 +532,7 @@ namespace EndlessRunner.Core
                 // Scroll controller updates itself in Update()
             }
         }
+            
         
         #endregion
         

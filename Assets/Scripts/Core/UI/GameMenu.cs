@@ -73,16 +73,39 @@ namespace Core.UI
 
         private void SetupButtons()
         {
+            Debug.Log("[GameMenu] 🔧 Setting up buttons...");
+            
             if (pauseButton != null)
             {
                 pauseButton.onClick.AddListener(TogglePause);
                 pauseButton.gameObject.SetActive(_showPauseButton);
+                Debug.Log($"[GameMenu] ✅ Pause button setup: {_showPauseButton}");
+            }
+            else
+            {
+                Debug.LogWarning("[GameMenu] ⚠️ Pause button is null!");
             }
 
             if (backButton != null)
             {
                 backButton.onClick.AddListener(GoToMainMenu);
                 backButton.gameObject.SetActive(_showBackButton);
+                Debug.Log($"[GameMenu] ✅ Back button setup: {_showBackButton}");
+            }
+            else
+            {
+                Debug.LogWarning("[GameMenu] ⚠️ Back button is null!");
+            }
+            
+            // Check EventSystem
+            var eventSystem = FindFirstObjectByType<UnityEngine.EventSystems.EventSystem>();
+            if (eventSystem == null)
+            {
+                Debug.LogError("[GameMenu] ❌ No EventSystem found in scene!");
+            }
+            else
+            {
+                Debug.Log("[GameMenu] ✅ EventSystem found");
             }
         }
 
